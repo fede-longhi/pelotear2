@@ -23,10 +23,13 @@ export async function sql<T = Record<string, unknown>>(
 }
 
 async function startLocal(): Promise<PGlite> {
-  // File-backed so HMR / route reloads keep local data during `npm run dev`.
-  const dataDir = path.join(process.cwd(), ".data", "pglite");
-  await mkdir(dataDir, { recursive: true });
-  const db = new PGlite(dataDir);
+  // File-backed so HMR keeps local data. On Vercel use /tmp (ephemeral) unless DATABASE_URL is set.
+  const base =
+    process.env.VERCEL === "1"
+      ? path.join("/tmp", "pelotear-pglite")
+      : path.join(process.cwd(), ".data", "pglite");
+  await mkdir(base, { recursive: true });
+  const db = new PGlite(base);
   await db.exec(`
     create table if not exists schema_migrations (
       name text primary key,

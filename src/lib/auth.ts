@@ -15,43 +15,51 @@ const DEMO_COOKIE = "pelotear_demo_user";
 
 export type AppUser = UserRow & { simulated: boolean };
 
+async function personaFromCookie(): Promise<AppUser> {
+  const jar = await cookies();
+  const demoId = jar.get(DEMO_COOKIE)?.value;
+  const persona =
+    DEMO_PERSONAS.find((p) => p.id === demoId) ?? DEMO_PERSONAS[0];
+  return {
+    id: persona.id,
+    name: persona.name,
+    email: persona.email,
+    simulated: true,
+  };
+}
+
 export async function requireUser(request?: Request): Promise<AppUser> {
   // Opt into request-time rendering (identity uses Date.now(); cookies for demo personas).
   await connection();
   const identity = await getIdentity(request ?? new Request("http://local"));
-  if (!identity.verified) {
-    throw new Error("Necesitás iniciar sesión para usar Pelotear.");
-  }
 
-  let id = identity.sub;
-  let name = identity.name?.trim() || identity.email?.split("@")[0] || "Jugador";
-  let email = identity.email || "";
-  let simulated = Boolean(identity.simulated);
+  let user: AppUser;
 
-  if (simulated) {
-    const jar = await cookies();
-    const demoId = jar.get(DEMO_COOKIE)?.value;
-    const persona = DEMO_PERSONAS.find((p) => p.id === demoId);
-    if (persona) {
-      id = persona.id;
-      name = persona.name;
-      email = persona.email;
+  if (identity.verified) {
+    let id = identity.sub;
+    let name =
+      identity.name?.trim() || identity.email?.split("@")[0] || "Jugador";
+    let email = identity.email || "";
+    const simulated = Boolean(identity.simulated);
+
+    if (simulated) {
+      user = await personaFromCookie();
     } else {
-      // Default simulated viewer maps to first demo persona for local multi-user.
-      id = DEMO_PERSONAS[0].id;
-      name = DEMO_PERSONAS[0].name;
-      email = DEMO_PERSONAS[0].email;
+      user = { id, email, name, simulated: false };
     }
+  } else {
+    // Vercel / no Cursor gate: use cookie personas so the app stays usable.
+    user = await personaFromCookie();
   }
 
   await sql(
     `insert into users (id, email, name)
      values ($1, $2, $3)
      on conflict (id) do update set email = excluded.email, name = excluded.name`,
-    [id, email, name],
+    [user.id, user.email, user.name],
   );
 
-  return { id, email, name, simulated };
+  return user;
 }
 
 export async function setDemoUser(personaId: string) {
