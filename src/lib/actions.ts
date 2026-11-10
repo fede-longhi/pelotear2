@@ -329,6 +329,51 @@ export async function removeGuestFromGroup(formData: FormData) {
   revalidateGroup(groupId);
 }
 
+/** Vote for jugador del partido after the match is played. */
+export async function voteMotm(formData: FormData) {
+  const user = await requireVerifiedUser();
+  const { groupId, matchId } = matchIds(formData);
+  const nomineeId = String(formData.get("nominee_id") || "").trim();
+  if (!nomineeId) throw new Error("Elegí un jugador.");
+
+  const flags = await getUserFlags(user.id);
+  if (flags?.is_guest) {
+    throw new Error("Los invitados no pueden votar.");
+  }
+
+  const membership = await getMembership(groupId, user.id);
+  if (!membership) throw new Error("No sos miembro.");
+
+  const match = await getMatch(matchId);
+  if (!match || match.group_id !== groupId) {
+    throw new Error("Partido no encontrado.");
+  }
+  if (match.status !== "jugado") {
+    throw new Error("Solo se vota cuando el partido ya se jugó.");
+  }
+
+  const players = await listMatchPlayers(matchId);
+  const nominee = players.find(
+    (p) =>
+      p.user_id === nomineeId &&
+      p.attendance === "confirmed" &&
+      Boolean(p.team),
+  );
+  if (!nominee) {
+    throw new Error("Solo podés votar a quien jugó el partido.");
+  }
+
+  await sql(
+    `insert into match_motm_votes (match_id, voter_id, nominee_id)
+     values ($1, $2, $3)
+     on conflict (match_id, voter_id) do update
+       set nominee_id = excluded.nominee_id,
+           created_at = now()`,
+    [matchId, user.id, nomineeId],
+  );
+  revalidateGroup(groupId, matchId);
+}
+
 /** Real member sets attendance for a guest player. */
 export async function setProxyAttendance(formData: FormData) {
   const user = await requireVerifiedUser();
