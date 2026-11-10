@@ -8,6 +8,7 @@ import {
   clearTeams,
   saveResult,
   setAttendance,
+  setProxyAttendance,
 } from "@/lib/actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import {
@@ -32,6 +33,7 @@ export default async function MatchPage({
 
   const players = await listMatchPlayers(matchId);
   const me = players.find((p) => p.user_id === user.id);
+  const guests = players.filter((p) => p.is_guest);
   const confirmed = players.filter((p) => p.attendance === "confirmed");
   const teamA = confirmed.filter((p) => p.team === "A");
   const teamB = confirmed.filter((p) => p.team === "B");
@@ -109,6 +111,53 @@ export default async function MatchPage({
           </section>
         )}
 
+        {scheduled && guests.length > 0 && (
+          <section className="section">
+            <h2>Asistencia de invitados</h2>
+            <p className="lead">
+              Los invitados no tienen cuenta: cargá su asistencia por ellos.
+            </p>
+            <div className="panel stack">
+              {guests.map((g) => (
+                <div key={g.user_id} className="player-row guest-attendance-row">
+                  <span className="player-identity">
+                    {playerLabel(g)}
+                    <span className="pill">invitado</span>
+                    <span className="meta">{g.attendance}</span>
+                  </span>
+                  <div className="inline-actions">
+                    <ProxyAttendanceButton
+                      groupId={groupId}
+                      matchId={matchId}
+                      userId={g.user_id}
+                      attendance="confirmed"
+                      label="Juega"
+                      active={g.attendance === "confirmed"}
+                    />
+                    <ProxyAttendanceButton
+                      groupId={groupId}
+                      matchId={matchId}
+                      userId={g.user_id}
+                      attendance="declined"
+                      label="No"
+                      active={g.attendance === "declined"}
+                      danger
+                    />
+                    <ProxyAttendanceButton
+                      groupId={groupId}
+                      matchId={matchId}
+                      userId={g.user_id}
+                      attendance="pending"
+                      label="Pendiente"
+                      active={g.attendance === "pending"}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         <section className="section">
           <h2>Confirmados ({confirmed.length})</h2>
           <div className="panel stack">
@@ -124,6 +173,7 @@ export default async function MatchPage({
                     ) : null}
                     {playerLabel(p)}
                     {p.user_id === user.id ? " (vos)" : ""}
+                    {p.is_guest ? <span className="pill">invitado</span> : null}
                   </span>
                   <span className="meta">
                     {p.attendance}
@@ -187,6 +237,7 @@ export default async function MatchPage({
                       <img src={p.photo_url} alt="" className="avatar-xs" />
                     ) : null}
                     {playerLabel(p)}
+                    {p.is_guest ? <span className="pill">invitado</span> : null}
                   </span>
                   {scheduled && (
                     <div className="inline-actions">
@@ -297,6 +348,41 @@ function AttendanceButton({
   );
 }
 
+function ProxyAttendanceButton({
+  groupId,
+  matchId,
+  userId,
+  attendance,
+  label,
+  active,
+  danger,
+}: {
+  groupId: string;
+  matchId: string;
+  userId: string;
+  attendance: string;
+  label: string;
+  active?: boolean;
+  danger?: boolean;
+}) {
+  const cls = active
+    ? danger
+      ? "btn btn-small btn-danger"
+      : "btn btn-small btn-primary"
+    : "btn btn-small btn-secondary";
+  return (
+    <form action={setProxyAttendance}>
+      <input type="hidden" name="group_id" value={groupId} />
+      <input type="hidden" name="match_id" value={matchId} />
+      <input type="hidden" name="user_id" value={userId} />
+      <input type="hidden" name="attendance" value={attendance} />
+      <button type="submit" className={cls}>
+        {label}
+      </button>
+    </form>
+  );
+}
+
 function TeamPanel({
   title,
   players,
@@ -310,6 +396,7 @@ function TeamPanel({
     name: string;
     nickname?: string;
     photo_url?: string;
+    is_guest?: boolean;
     team: TeamSide | null;
   }[];
   scheduled: boolean;
@@ -330,6 +417,7 @@ function TeamPanel({
                 <img src={p.photo_url} alt="" className="avatar-xs" />
               ) : null}
               {playerLabel(p)}
+              {p.is_guest ? <span className="pill">invitado</span> : null}
             </span>
             {scheduled && (
               <div className="inline-actions">

@@ -9,6 +9,7 @@ import {
   getGroupByInvite,
   getMatch,
   getMembership,
+  getUserFlags,
   listMatchPlayers,
 } from "./queries";
 import { playerStatsForGroup } from "./stats";
@@ -252,4 +253,114 @@ export async function ensureGroupAccess(groupId: string) {
   if (!group) return { user, group: null, membership: null };
   const membership = await getMembership(groupId, user.id);
   return { user, group, membership };
+}
+
+/** Add a guest (no account) that members can manage in matches. */
+export async function addGuestToGroup(formData: FormData) {
+  const user = await requireVerifiedUser();
+  const groupId = String(formData.get("group_id") || "").trim();
+  const nickname = String(formData.get("nickname") || "").trim();
+  if (!groupId) throw new Error("Grupo inválido.");
+  if (!nickname) throw new Error("El apodo del invitado es obligatorio.");
+  if (nickname.length > 40) throw new Error("Apodo demasiado largo.");
+
+  const membership = await getMembership(groupId, user.id);
+  if (!membership) throw new Error("No sos miembro de este grupo.");
+
+  const id = newId("gst");
+  const email = `guest_${id}@guest.pelotear.local`;
+  await sql(
+    `insert into users (id, email, name, nickname, first_name, is_guest, email_verified_at)
+     values ($1, $2, $3, $3, $3, true, now())`,
+    [id, email, nickname],
+  );
+  await sql(
+    `insert into group_members (group_id, user_id, role) values ($1, $2, 'member')`,
+    [groupId, id],
+  );
+
+  // Include guest in open scheduled matches of this group.
+  const open = await sql<{ id: string }>(
+    `select id from matches where group_id = $1 and status = 'programado'`,
+    [groupId],
+  );
+  for (const m of open) {
+    await sql(
+      `insert into match_players (match_id, user_id, attendance)
+       values ($1, $2, 'pending')
+       on conflict do nothing`,
+      [m.id, id],
+    );
+  }
+
+  revalidateGroup(groupId);
+  redirect(`/grupos/${groupId}`);
+}
+
+export async function removeGuestFromGroup(formData: FormData) {
+  const user = await requireVerifiedUser();
+  const groupId = String(formData.get("group_id") || "").trim();
+  const guestId = String(formData.get("guest_id") || "").trim();
+  if (!groupId || !guestId) throw new Error("Datos inválidos.");
+
+  const membership = await getMembership(groupId, user.id);
+  if (!membership) throw new Error("No sos miembro.");
+
+  const flags = await getUserFlags(guestId);
+  if (!flags?.is_guest) {
+    throw new Error("Solo se pueden quitar invitados (sin cuenta).");
+  }
+
+  await sql(
+    `delete from group_members where group_id = $1 and user_id = $2`,
+    [groupId, guestId],
+  );
+  // Drop from open matches of this group; keep history on played matches.
+  await sql(
+    `delete from match_players mp
+     using matches m
+     where mp.match_id = m.id
+       and m.group_id = $1
+       and m.status = 'programado'
+       and mp.user_id = $2`,
+    [groupId, guestId],
+  );
+
+  revalidateGroup(groupId);
+}
+
+/** Real member sets attendance for a guest player. */
+export async function setProxyAttendance(formData: FormData) {
+  const user = await requireVerifiedUser();
+  const { groupId, matchId } = matchIds(formData);
+  const guestId = String(formData.get("user_id") || "").trim();
+  const attendance = String(formData.get("attendance") || "") as Attendance;
+  if (!guestId) throw new Error("Invitado inválido.");
+  if (!["pending", "confirmed", "declined"].includes(attendance)) {
+    throw new Error("Asistencia inválida.");
+  }
+
+  const membership = await getMembership(groupId, user.id);
+  if (!membership) throw new Error("No sos miembro.");
+  const flags = await getUserFlags(guestId);
+  if (!flags?.is_guest) {
+    throw new Error("Solo se puede cargar asistencia de invitados.");
+  }
+  const guestMembership = await getMembership(groupId, guestId);
+  if (!guestMembership) throw new Error("El invitado no está en este grupo.");
+
+  const match = await getMatch(matchId);
+  if (!match || match.group_id !== groupId) throw new Error("Partido no encontrado.");
+  if (match.status !== "programado") {
+    throw new Error("Solo se puede confirmar en partidos programados.");
+  }
+
+  await sql(
+    `insert into match_players (match_id, user_id, attendance)
+     values ($1, $2, $3)
+     on conflict (match_id, user_id) do update set attendance = excluded.attendance,
+       team = case when excluded.attendance = 'confirmed' then match_players.team else null end`,
+    [matchId, guestId, attendance],
+  );
+  revalidateGroup(groupId, matchId);
 }
