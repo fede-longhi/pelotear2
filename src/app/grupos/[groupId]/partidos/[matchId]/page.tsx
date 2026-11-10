@@ -9,12 +9,15 @@ import {
   saveResult,
   setAttendance,
   setProxyAttendance,
+  voteMotm,
 } from "@/lib/actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import {
   getMatch,
   getMembership,
+  getMyMotmVote,
   listMatchPlayers,
+  listMotmTally,
 } from "@/lib/queries";
 import { playerLabel } from "@/lib/display";
 import type { TeamSide } from "@/lib/types";
@@ -39,6 +42,18 @@ export default async function MatchPage({
   const teamB = confirmed.filter((p) => p.team === "B");
   const unassigned = confirmed.filter((p) => !p.team);
   const scheduled = match.status === "programado";
+  const played = match.status === "jugado";
+  const motmCandidates = confirmed.filter((p) => Boolean(p.team));
+  const [motmTally, myMotmVote] = played
+    ? await Promise.all([
+        listMotmTally(matchId),
+        getMyMotmVote(matchId, user.id),
+      ])
+    : [[], null];
+  const topVotes = motmTally[0]?.votes ?? 0;
+  const winners =
+    topVotes > 0 ? motmTally.filter((r) => r.votes === topVotes) : [];
+  const totalMotmVotes = motmTally.reduce((sum, r) => sum + Number(r.votes), 0);
 
   return (
     <>
@@ -65,7 +80,7 @@ export default async function MatchPage({
           </span>
         </section>
 
-        {match.status === "jugado" && (
+        {played && (
           <section className="section panel">
             <div className="scoreboard">
               <div>
@@ -78,6 +93,80 @@ export default async function MatchPage({
                 <div className="score">{match.goals_b}</div>
               </div>
             </div>
+          </section>
+        )}
+
+        {played && (
+          <section className="section">
+            <h2>Jugador del partido</h2>
+            <p className="lead">
+              Los miembros con cuenta votan a quien jugó. Los invitados no
+              votan, pero sí pueden recibir votos. Un voto por persona (se puede
+              cambiar).
+            </p>
+
+            {winners.length > 0 ? (
+              <p className="pill pill-ok motm-winner">
+                {winners.length === 1 ? "Ganador: " : "Empate: "}
+                {winners
+                  .map((w) => playerLabel(w) + (w.is_guest ? " (invitado)" : ""))
+                  .join(" · ")}{" "}
+                · {topVotes} {topVotes === 1 ? "voto" : "votos"}
+              </p>
+            ) : (
+              <p className="empty">Todavía no hay votos.</p>
+            )}
+
+            {motmCandidates.length === 0 ? (
+              <p className="empty">No hay jugadores elegibles.</p>
+            ) : (
+              <div className="panel stack">
+                {motmCandidates.map((p) => {
+                  const tally =
+                    motmTally.find((t) => t.nominee_id === p.user_id)?.votes ??
+                    0;
+                  const selected = myMotmVote === p.user_id;
+                  return (
+                    <div key={p.user_id} className="player-row">
+                      <span className="player-identity">
+                        {playerLabel(p)}
+                        {p.is_guest ? (
+                          <span className="pill">invitado</span>
+                        ) : null}
+                        <span className="meta">
+                          {tally} {tally === 1 ? "voto" : "votos"}
+                        </span>
+                      </span>
+                      <form action={voteMotm}>
+                        <input type="hidden" name="group_id" value={groupId} />
+                        <input type="hidden" name="match_id" value={matchId} />
+                        <input
+                          type="hidden"
+                          name="nominee_id"
+                          value={p.user_id}
+                        />
+                        <button
+                          type="submit"
+                          className={
+                            selected
+                              ? "btn btn-small btn-primary"
+                              : "btn btn-small btn-secondary"
+                          }
+                        >
+                          {selected ? "Tu voto" : "Votar"}
+                        </button>
+                      </form>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {totalMotmVotes > 0 ? (
+              <p className="meta" style={{ marginTop: "0.75rem" }}>
+                Total: {totalMotmVotes}{" "}
+                {totalMotmVotes === 1 ? "voto" : "votos"}
+              </p>
+            ) : null}
           </section>
         )}
 

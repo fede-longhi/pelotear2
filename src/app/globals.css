@@ -608,3 +608,9 @@ textarea {
   outline: 2px solid var(--gold);
   outline-offset: 3px;
 }
+
+.motm-winner {
+  display: inline-flex;
+  margin-bottom: 0.85rem;
+  font-size: 0.9rem;
+}

@@ -4,6 +4,7 @@ import type {
   MatchPlayerRow,
   MatchRow,
   MemberRow,
+  MotmTallyRow,
 } from "./types";
 
 function asDateString(value: unknown): string {
@@ -110,6 +111,32 @@ export async function listMatchPlayers(matchId: string) {
      join users u on u.id = mp.user_id
      where mp.match_id = $1
      order by u.is_guest asc, mp.team nulls last, u.name`,
+    [matchId],
+  );
+}
+
+export async function getMyMotmVote(matchId: string, voterId: string) {
+  const rows = await sql<{ nominee_id: string }>(
+    `select nominee_id from match_motm_votes
+     where match_id = $1 and voter_id = $2
+     limit 1`,
+    [matchId, voterId],
+  );
+  return rows[0]?.nominee_id ?? null;
+}
+
+export async function listMotmTally(matchId: string): Promise<MotmTallyRow[]> {
+  return sql<MotmTallyRow>(
+    `select v.nominee_id,
+            u.name,
+            u.nickname,
+            coalesce(u.is_guest, false) as is_guest,
+            count(*)::int as votes
+     from match_motm_votes v
+     join users u on u.id = v.nominee_id
+     where v.match_id = $1
+     group by v.nominee_id, u.name, u.nickname, u.is_guest
+     order by votes desc, u.name asc`,
     [matchId],
   );
 }

@@ -72,3 +72,11 @@ export type PlayerStats = {
   played: number;
   is_guest?: boolean;
 };
+
+export type MotmTallyRow = {
+  nominee_id: string;
+  name: string;
+  nickname: string;
+  is_guest: boolean;
+  votes: number;
+};
