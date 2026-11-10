@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
-import { appBaseUrl, verifyEmailToken } from "@/lib/email";
+import { verifyEmailToken } from "@/lib/email";
 
 const DEV_VERIFY_COOKIE = "pelotear_dev_verify_url";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ token: string }> },
 ) {
   const { token } = await context.params;
   const result = await verifyEmailToken(token);
-  const base = appBaseUrl();
+  const base = request.url;
 
   if (!result.ok) {
     const url = new URL("/verificar-email", base);
