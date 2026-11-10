@@ -68,7 +68,7 @@ export async function getMembership(groupId: string, userId: string) {
 
 export async function listMembers(groupId: string) {
   return sql<MemberRow>(
-    `select gm.*, u.name, u.email
+    `select gm.*, u.name, u.email, u.nickname, u.photo_url
      from group_members gm
      join users u on u.id = gm.user_id
      where gm.group_id = $1
@@ -95,7 +95,7 @@ export async function getMatch(matchId: string) {
 
 export async function listMatchPlayers(matchId: string) {
   return sql<MatchPlayerRow>(
-    `select mp.*, u.name, u.email
+    `select mp.*, u.name, u.email, u.nickname, u.photo_url
      from match_players mp
      join users u on u.id = mp.user_id
      where mp.match_id = $1

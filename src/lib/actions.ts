@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireUser, setDemoUser } from "./auth";
+import { requireUser } from "./auth";
 import { inviteCode, newId, sql } from "./db";
 import {
   getGroup,
@@ -19,12 +19,6 @@ function revalidateGroup(groupId: string, matchId?: string) {
   revalidatePath("/");
   revalidatePath(`/grupos/${groupId}`);
   if (matchId) revalidatePath(`/grupos/${groupId}/partidos/${matchId}`);
-}
-
-export async function switchDemoPersona(personaId: string) {
-  await setDemoUser(personaId);
-  revalidatePath("/");
-  revalidatePath("/grupos");
 }
 
 export async function createGroup(formData: FormData) {
@@ -185,7 +179,10 @@ export async function autoGenerateTeams(formData: FormData) {
   const stats = await playerStatsForGroup(groupId);
   const balanced = balanceTeams(
     mergeStats(
-      players.map((p) => ({ user_id: p.user_id, name: p.name })),
+      players.map((p) => ({
+        user_id: p.user_id,
+        name: (p.nickname?.trim() || p.name || "Jugador").trim(),
+      })),
       stats,
     ),
   );

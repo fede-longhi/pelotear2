@@ -15,6 +15,7 @@ import {
   getMembership,
   listMatchPlayers,
 } from "@/lib/queries";
+import { playerLabel } from "@/lib/display";
 import type { TeamSide } from "@/lib/types";
 
 export default async function MatchPage({
@@ -116,8 +117,12 @@ export default async function MatchPage({
             ) : (
               players.map((p) => (
                 <div key={p.user_id} className="player-row">
-                  <span>
-                    {p.name}
+                  <span className="player-identity">
+                    {p.photo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.photo_url} alt="" className="avatar-xs" />
+                    ) : null}
+                    {playerLabel(p)}
                     {p.user_id === user.id ? " (vos)" : ""}
                   </span>
                   <span className="meta">
@@ -176,7 +181,13 @@ export default async function MatchPage({
               <h3 style={{ marginTop: 0 }}>Sin equipo</h3>
               {unassigned.map((p) => (
                 <div key={p.user_id} className="player-row">
-                  <span>{p.name}</span>
+                  <span className="player-identity">
+                    {p.photo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.photo_url} alt="" className="avatar-xs" />
+                    ) : null}
+                    {playerLabel(p)}
+                  </span>
                   {scheduled && (
                     <div className="inline-actions">
                       <TeamButton
@@ -294,7 +305,13 @@ function TeamPanel({
   matchId,
 }: {
   title: string;
-  players: { user_id: string; name: string; team: TeamSide | null }[];
+  players: {
+    user_id: string;
+    name: string;
+    nickname?: string;
+    photo_url?: string;
+    team: TeamSide | null;
+  }[];
   scheduled: boolean;
   groupId: string;
   matchId: string;
@@ -307,7 +324,13 @@ function TeamPanel({
       ) : (
         players.map((p) => (
           <div key={p.user_id} className="player-row">
-            <span>{p.name}</span>
+            <span className="player-identity">
+              {p.photo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={p.photo_url} alt="" className="avatar-xs" />
+              ) : null}
+              {playerLabel(p)}
+            </span>
             {scheduled && (
               <div className="inline-actions">
                 <TeamButton
