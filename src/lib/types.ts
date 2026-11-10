@@ -7,6 +7,13 @@ export type UserRow = {
   id: string;
   email: string;
   name: string;
+  first_name: string;
+  last_name: string;
+  nickname: string;
+  phone: string;
+  birth_date: string | null;
+  photo_url: string;
+  password_hash: string | null;
 };
 
 export type GroupRow = {
@@ -24,6 +31,8 @@ export type MemberRow = {
   joined_at: string;
   name: string;
   email: string;
+  nickname: string;
+  photo_url: string;
 };
 
 export type MatchRow = {
@@ -46,6 +55,8 @@ export type MatchPlayerRow = {
   attendance: Attendance;
   name: string;
   email: string;
+  nickname: string;
+  photo_url: string;
 };
 
 export type PlayerStats = {

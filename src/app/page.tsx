@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
-import { requireUser } from "@/lib/auth";
+import { getOptionalUser } from "@/lib/auth";
 import { listGroupsForUser } from "@/lib/queries";
 
 export default async function HomePage() {
-  const user = await requireUser();
-  const groups = await listGroupsForUser(user.id);
+  const user = await getOptionalUser();
+  const groups = user ? await listGroupsForUser(user.id) : [];
 
   return (
     <>
@@ -19,12 +19,25 @@ export default async function HomePage() {
             victorias, empates y derrotas.
           </p>
           <div className="cta-row">
-            <Link className="btn btn-primary" href="/grupos#nuevo">
-              Crear grupo
-            </Link>
-            <Link className="btn btn-secondary" href="/unirse">
-              Unirme con código
-            </Link>
+            {user ? (
+              <>
+                <Link className="btn btn-primary" href="/grupos#nuevo">
+                  Crear grupo
+                </Link>
+                <Link className="btn btn-secondary" href="/unirse">
+                  Unirme con código
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link className="btn btn-primary" href="/registro">
+                  Crear cuenta
+                </Link>
+                <Link className="btn btn-secondary" href="/ingresar">
+                  Ingresar
+                </Link>
+              </>
+            )}
           </div>
         </section>
 
@@ -34,7 +47,11 @@ export default async function HomePage() {
             <p className="lead">Seguí donde dejaste el último partido.</p>
             <div className="stack">
               {groups.slice(0, 3).map((g) => (
-                <Link key={g.id} href={`/grupos/${g.id}`} className="panel group-link">
+                <Link
+                  key={g.id}
+                  href={`/grupos/${g.id}`}
+                  className="panel group-link"
+                >
                   <strong>{g.name}</strong>
                   <span className="meta">
                     {g.member_count} miembros · {g.role}

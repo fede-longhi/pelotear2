@@ -11,7 +11,9 @@ export async function playerStatsForGroup(
     goals_a: number;
     goals_b: number;
   }>(
-    `select mp.user_id, u.name, mp.team, m.goals_a, m.goals_b
+    `select mp.user_id,
+            coalesce(nullif(trim(u.nickname), ''), nullif(trim(u.name), ''), u.email) as name,
+            mp.team, m.goals_a, m.goals_b
      from match_players mp
      join matches m on m.id = mp.match_id
      join users u on u.id = mp.user_id

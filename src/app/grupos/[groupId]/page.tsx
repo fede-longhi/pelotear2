@@ -9,6 +9,7 @@ import {
   listMatches,
   listMembers,
 } from "@/lib/queries";
+import { playerLabel } from "@/lib/display";
 import { playerStatsForGroup } from "@/lib/stats";
 
 export default async function GroupPage({
@@ -53,8 +54,16 @@ export default async function GroupPage({
             <div className="panel stack">
               {members.map((m) => (
                 <div key={m.user_id} className="player-row">
-                  <span>
-                    {m.name}
+                  <span className="player-identity">
+                    {m.photo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={m.photo_url} alt="" className="avatar-xs" />
+                    ) : (
+                      <span className="avatar-xs avatar-placeholder">
+                        {playerLabel(m).slice(0, 1).toUpperCase()}
+                      </span>
+                    )}
+                    {playerLabel(m)}
                     {m.user_id === user.id ? " (vos)" : ""}
                   </span>
                   <span className="pill">{m.role}</span>

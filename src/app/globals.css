@@ -112,6 +112,55 @@ textarea {
   color: var(--muted);
 }
 
+.user-chip-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.player-identity {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.avatar-xs,
+.avatar-lg {
+  border-radius: 999px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+.avatar-xs {
+  width: 1.6rem;
+  height: 1.6rem;
+  font-size: 0.7rem;
+}
+
+.avatar-lg {
+  width: 4.5rem;
+  height: 4.5rem;
+  font-size: 1.6rem;
+}
+
+.avatar-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.profile-hero {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
 .demo-switcher {
   display: flex;
   flex-wrap: wrap;
