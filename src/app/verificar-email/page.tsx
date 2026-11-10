@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import {
   resendVerificationAction,
 } from "@/lib/auth-actions";
 import { emailConfigured } from "@/lib/email";
+import { AFTER_AUTH_COOKIE, safeNextPath } from "@/lib/redirects";
 
 export default async function VerificarEmailPage({
   searchParams,
@@ -16,12 +18,25 @@ export default async function VerificarEmailPage({
     nuevo?: string;
     reenviado?: string;
     error?: string;
+    next?: string;
   }>;
 }) {
-  const user = await getOptionalUser();
-  if (!user) redirect("/ingresar");
-  if (user.email_verified) redirect("/grupos");
   const sp = await searchParams;
+  const nextFromQuery = safeNextPath(sp.next);
+  const jar = await cookies();
+  const next =
+    nextFromQuery || safeNextPath(jar.get(AFTER_AUTH_COOKIE)?.value);
+
+  const user = await getOptionalUser();
+  if (!user) {
+    redirect(
+      next ? `/ingresar?next=${encodeURIComponent(next)}` : "/ingresar",
+    );
+  }
+  if (user.email_verified) {
+    redirect(next || "/grupos");
+  }
+
   const devUrl = await getDevVerifyUrl();
   const hasResend = emailConfigured();
 
@@ -35,6 +50,11 @@ export default async function VerificarEmailPage({
             Te enviamos un link a <strong>{user.email}</strong>. Hasta
             confirmarlo no podés crear ni unirte a grupos.
           </p>
+          {next ? (
+            <p className="pill pill-ok">
+              Después de confirmar volvés a la invitación.
+            </p>
+          ) : null}
           {sp.error ? <p className="flash-error">{sp.error}</p> : null}
           {sp.nuevo ? (
             <p className="pill pill-ok">Cuenta creada — revisá tu bandeja.</p>

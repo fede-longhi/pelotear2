@@ -6,17 +6,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getOptionalUser } from "@/lib/auth";
 import { signupAction } from "@/lib/auth-actions";
+import { safeNextPath, withNext } from "@/lib/redirects";
 
 export default async function RegistroPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 }) {
+  const sp = await searchParams;
+  const next = safeNextPath(sp.next);
   const user = await getOptionalUser();
   if (user && !user.simulated) {
-    redirect(user.email_verified ? "/grupos" : "/verificar-email");
+    redirect(
+      user.email_verified
+        ? next || "/grupos"
+        : withNext("/verificar-email", next),
+    );
   }
-  const sp = await searchParams;
 
   return (
     <>
@@ -28,8 +34,14 @@ export default async function RegistroPage({
             Registro interno de Pelotear — sin Google ni proveedores externos.
             Después te pedimos confirmar el email.
           </p>
+          {next ? (
+            <p className="pill pill-ok">
+              Después de confirmar el email volvés a la invitación.
+            </p>
+          ) : null}
           {sp.error ? <p className="flash-error">{sp.error}</p> : null}
           <form action={signupAction} className="panel form-grid">
+            {next ? <input type="hidden" name="next" value={next} /> : null}
             <div className="two-col">
               <div className="field">
                 <Label htmlFor="first_name">Nombre</Label>
@@ -73,7 +85,7 @@ export default async function RegistroPage({
             <div className="form-actions">
               <Button type="submit">Registrarme</Button>
               <Button asChild variant="secondary">
-                <Link href="/ingresar">Ya tengo cuenta</Link>
+                <Link href={withNext("/ingresar", next)}>Ya tengo cuenta</Link>
               </Button>
             </div>
           </form>

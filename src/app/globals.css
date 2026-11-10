@@ -520,6 +520,32 @@ textarea {
   font-size: 1.1rem;
 }
 
+.invite-share {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+  margin-top: 0.35rem;
+}
+
+.invite-url {
+  flex: 1 1 16rem;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+  color: var(--chalk);
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  padding: 0.55rem 0.7rem;
+}
+
+.invite-decision {
+  gap: 0.75rem;
+}
+
 .flash-error {
   background: rgba(232, 93, 76, 0.15);
   border: 1px solid rgba(232, 93, 76, 0.4);

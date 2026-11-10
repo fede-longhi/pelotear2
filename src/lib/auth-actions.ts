@@ -18,9 +18,33 @@ import {
   sendVerificationEmail,
   verifyEmailToken,
 } from "./email";
+import { AFTER_AUTH_COOKIE, safeNextPath } from "./redirects";
 import { createSession, destroySession, demoModeEnabled } from "./session";
 
 const DEV_VERIFY_COOKIE = "pelotear_dev_verify_url";
+
+async function rememberAfterAuth(nextRaw: unknown) {
+  const next = safeNextPath(nextRaw);
+  const jar = await cookies();
+  if (!next) {
+    jar.delete(AFTER_AUTH_COOKIE);
+    return null;
+  }
+  jar.set(AFTER_AUTH_COOKIE, next, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 2,
+  });
+  return next;
+}
+
+export async function consumeAfterAuthPath(): Promise<string | null> {
+  const jar = await cookies();
+  const next = safeNextPath(jar.get(AFTER_AUTH_COOKIE)?.value);
+  jar.delete(AFTER_AUTH_COOKIE);
+  return next;
+}
 
 function errMsg(error: unknown, fallback: string) {
   return error instanceof Error && error.message
@@ -64,6 +88,7 @@ async function issueAndSendVerification(user: {
 }
 
 export async function signupAction(formData: FormData) {
+  const next = await rememberAfterAuth(formData.get("next"));
   try {
     const user = await registerUser({
       email: String(formData.get("email") || ""),
@@ -75,14 +100,16 @@ export async function signupAction(formData: FormData) {
     await createSession(user.id);
     await issueAndSendVerification(user);
   } catch (error) {
-    redirect(
-      `/registro?error=${encodeURIComponent(errMsg(error, "No se pudo registrar."))}`,
-    );
+    const q = new URLSearchParams();
+    q.set("error", errMsg(error, "No se pudo registrar."));
+    if (next) q.set("next", next);
+    redirect(`/registro?${q.toString()}`);
   }
-  redirect("/verificar-email?nuevo=1");
+  redirect(next ? `/verificar-email?nuevo=1&next=${encodeURIComponent(next)}` : "/verificar-email?nuevo=1");
 }
 
 export async function loginAction(formData: FormData) {
+  const next = await rememberAfterAuth(formData.get("next"));
   let verified = true;
   try {
     const user = await loginUser(
@@ -92,11 +119,19 @@ export async function loginAction(formData: FormData) {
     await createSession(user.id);
     verified = user.email_verified;
   } catch (error) {
+    const q = new URLSearchParams();
+    q.set("error", errMsg(error, "No se pudo ingresar."));
+    if (next) q.set("next", next);
+    redirect(`/ingresar?${q.toString()}`);
+  }
+  if (!verified) {
     redirect(
-      `/ingresar?error=${encodeURIComponent(errMsg(error, "No se pudo ingresar."))}`,
+      next
+        ? `/verificar-email?next=${encodeURIComponent(next)}`
+        : "/verificar-email",
     );
   }
-  redirect(verified ? "/grupos" : "/verificar-email");
+  redirect(next || "/grupos");
 }
 
 export async function logoutAction() {
