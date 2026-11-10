@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireUser } from "./auth";
+import { requireVerifiedUser } from "./auth";
 import { inviteCode, newId, sql } from "./db";
 import {
   getGroup,
@@ -22,7 +22,7 @@ function revalidateGroup(groupId: string, matchId?: string) {
 }
 
 export async function createGroup(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   const name = String(formData.get("name") || "").trim();
   if (!name) throw new Error("El nombre del grupo es obligatorio.");
 
@@ -40,7 +40,7 @@ export async function createGroup(formData: FormData) {
 }
 
 export async function joinGroupByCode(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   const code = String(formData.get("code") || "")
     .trim()
     .toUpperCase();
@@ -57,7 +57,7 @@ export async function joinGroupByCode(formData: FormData) {
 }
 
 export async function joinGroupFromInvite(code: string) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   const group = await getGroupByInvite(code);
   if (!group) throw new Error("Invitación no encontrada.");
   await sql(
@@ -70,7 +70,7 @@ export async function joinGroupFromInvite(code: string) {
 }
 
 export async function createMatch(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   const groupId = String(formData.get("group_id") || "").trim();
   if (!groupId) throw new Error("Grupo inválido.");
   const membership = await getMembership(groupId, user.id);
@@ -116,7 +116,7 @@ function matchIds(formData: FormData) {
 }
 
 export async function setAttendance(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   const { groupId, matchId } = matchIds(formData);
   const attendance = String(formData.get("attendance") || "") as Attendance;
   if (!["pending", "confirmed", "declined"].includes(attendance)) {
@@ -139,7 +139,7 @@ export async function setAttendance(formData: FormData) {
 }
 
 export async function assignTeam(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   const { groupId, matchId } = matchIds(formData);
   const userId = String(formData.get("user_id") || "").trim();
   const teamRaw = String(formData.get("team") || "").trim();
@@ -160,7 +160,7 @@ export async function assignTeam(formData: FormData) {
 }
 
 export async function autoGenerateTeams(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   const { groupId, matchId } = matchIds(formData);
   const membership = await getMembership(groupId, user.id);
   if (!membership) throw new Error("No sos miembro.");
@@ -197,7 +197,7 @@ export async function autoGenerateTeams(formData: FormData) {
 }
 
 export async function clearTeams(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   const { groupId, matchId } = matchIds(formData);
   const membership = await getMembership(groupId, user.id);
   if (!membership) throw new Error("No sos miembro.");
@@ -208,7 +208,7 @@ export async function clearTeams(formData: FormData) {
 }
 
 export async function saveResult(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   const { groupId, matchId } = matchIds(formData);
   const membership = await getMembership(groupId, user.id);
   if (!membership) throw new Error("No sos miembro.");
@@ -238,7 +238,7 @@ export async function saveResult(formData: FormData) {
 }
 
 export async function cancelMatch(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   const { groupId, matchId } = matchIds(formData);
   const membership = await getMembership(groupId, user.id);
   if (membership?.role !== "admin") throw new Error("Solo un admin puede cancelar.");
@@ -247,7 +247,7 @@ export async function cancelMatch(formData: FormData) {
 }
 
 export async function ensureGroupAccess(groupId: string) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   const group = await getGroup(groupId);
   if (!group) return { user, group: null, membership: null };
   const membership = await getMembership(groupId, user.id);

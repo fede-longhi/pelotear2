@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { createGroup } from "@/lib/actions";
-import { requireUser } from "@/lib/auth";
+import { requireVerifiedUser } from "@/lib/auth";
 import { listGroupsForUser } from "@/lib/queries";
 
 export default async function GruposPage() {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   const groups = await listGroupsForUser(user.id);
 
   return (
@@ -16,19 +19,18 @@ export default async function GruposPage() {
           <h2>Crear grupo</h2>
           <p className="lead">Un espacio para tu equipo de siempre.</p>
           <form action={createGroup} className="panel form-grid">
-            <label>
-              Nombre del grupo
-              <input
+            <div className="field">
+              <Label htmlFor="name">Nombre del grupo</Label>
+              <Input
+                id="name"
                 name="name"
                 required
                 maxLength={60}
                 placeholder="Los del jueves"
               />
-            </label>
+            </div>
             <div className="form-actions">
-              <button type="submit" className="btn btn-primary">
-                Crear
-              </button>
+              <Button type="submit">Crear</Button>
             </div>
           </form>
         </section>
@@ -40,7 +42,11 @@ export default async function GruposPage() {
           ) : (
             <div className="stack">
               {groups.map((g) => (
-                <Link key={g.id} href={`/grupos/${g.id}`} className="panel group-link">
+                <Link
+                  key={g.id}
+                  href={`/grupos/${g.id}`}
+                  className="panel group-link"
+                >
                   <div>
                     <strong>{g.name}</strong>
                     <div className="meta">Código {g.invite_code}</div>

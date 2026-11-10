@@ -14,6 +14,7 @@ export type UserRow = {
   birth_date: string | null;
   photo_url: string;
   password_hash: string | null;
+  email_verified_at: string | null;
 };
 
 export type GroupRow = {
