@@ -68,13 +68,22 @@ export async function getMembership(groupId: string, userId: string) {
 
 export async function listMembers(groupId: string) {
   return sql<MemberRow>(
-    `select gm.*, u.name, u.email, u.nickname, u.photo_url
+    `select gm.*, u.name, u.email, u.nickname, u.photo_url,
+            coalesce(u.is_guest, false) as is_guest
      from group_members gm
      join users u on u.id = gm.user_id
      where gm.group_id = $1
-     order by gm.role desc, u.name`,
+     order by u.is_guest asc, gm.role desc, u.name`,
     [groupId],
   );
+}
+
+export async function getUserFlags(userId: string) {
+  const rows = await sql<{ is_guest: boolean }>(
+    `select coalesce(is_guest, false) as is_guest from users where id = $1`,
+    [userId],
+  );
+  return rows[0] ?? null;
 }
 
 export async function listMatches(groupId: string) {
@@ -95,11 +104,12 @@ export async function getMatch(matchId: string) {
 
 export async function listMatchPlayers(matchId: string) {
   return sql<MatchPlayerRow>(
-    `select mp.*, u.name, u.email, u.nickname, u.photo_url
+    `select mp.*, u.name, u.email, u.nickname, u.photo_url,
+            coalesce(u.is_guest, false) as is_guest
      from match_players mp
      join users u on u.id = mp.user_id
      where mp.match_id = $1
-     order by mp.team nulls last, u.name`,
+     order by u.is_guest asc, mp.team nulls last, u.name`,
     [matchId],
   );
 }

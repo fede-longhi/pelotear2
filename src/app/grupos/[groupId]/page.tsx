@@ -4,7 +4,11 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createMatch } from "@/lib/actions";
+import {
+  addGuestToGroup,
+  createMatch,
+  removeGuestFromGroup,
+} from "@/lib/actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { playerLabel } from "@/lib/display";
 import {
@@ -34,6 +38,8 @@ export default async function GroupPage({
   ]);
 
   const inviteUrl = `/unirse/${group.invite_code}`;
+  const guests = members.filter((m) => m.is_guest);
+  const realMembers = members.filter((m) => !m.is_guest);
 
   return (
     <>
@@ -55,7 +61,7 @@ export default async function GroupPage({
           <div>
             <h2>Miembros</h2>
             <div className="panel stack">
-              {members.map((m) => (
+              {realMembers.map((m) => (
                 <div key={m.user_id} className="player-row">
                   <span className="player-identity">
                     {m.photo_url ? (
@@ -72,7 +78,62 @@ export default async function GroupPage({
                   <span className="pill">{m.role}</span>
                 </div>
               ))}
+              {realMembers.length === 0 ? (
+                <p className="empty">Sin miembros con cuenta.</p>
+              ) : null}
             </div>
+
+            <h2 style={{ marginTop: "1.25rem" }}>Invitados</h2>
+            <p className="lead">
+              Jugadores sin cuenta. Un miembro del grupo carga su asistencia y
+              equipo.
+            </p>
+            <div className="panel stack">
+              {guests.length === 0 ? (
+                <p className="empty">Todavía no hay invitados.</p>
+              ) : (
+                guests.map((m) => (
+                  <div key={m.user_id} className="player-row">
+                    <span className="player-identity">
+                      <span className="avatar-xs avatar-placeholder">
+                        {playerLabel(m).slice(0, 1).toUpperCase()}
+                      </span>
+                      {playerLabel(m)}
+                      <span className="pill">invitado</span>
+                    </span>
+                    <form action={removeGuestFromGroup}>
+                      <input type="hidden" name="group_id" value={groupId} />
+                      <input type="hidden" name="guest_id" value={m.user_id} />
+                      <Button type="submit" variant="secondary" size="sm">
+                        Quitar
+                      </Button>
+                    </form>
+                  </div>
+                ))
+              )}
+            </div>
+            <form
+              action={addGuestToGroup}
+              className="panel form-grid"
+              style={{ marginTop: "0.85rem" }}
+            >
+              <input type="hidden" name="group_id" value={groupId} />
+              <div className="field">
+                <Label htmlFor="guest_nickname">Apodo del invitado</Label>
+                <Input
+                  id="guest_nickname"
+                  name="nickname"
+                  required
+                  maxLength={40}
+                  placeholder="Ej. El Flaco"
+                />
+              </div>
+              <div className="form-actions">
+                <Button type="submit" variant="secondary">
+                  Agregar invitado
+                </Button>
+              </div>
+            </form>
           </div>
 
           <div>
@@ -163,7 +224,14 @@ export default async function GroupPage({
                 <tbody>
                   {stats.map((s) => (
                     <tr key={s.user_id}>
-                      <td>{s.name}</td>
+                      <td>
+                        {s.name}
+                        {s.is_guest ? (
+                          <span className="pill" style={{ marginLeft: "0.4rem" }}>
+                            invitado
+                          </span>
+                        ) : null}
+                      </td>
                       <td>{s.played}</td>
                       <td>{s.wins}</td>
                       <td>{s.draws}</td>

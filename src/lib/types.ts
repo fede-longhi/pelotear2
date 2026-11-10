@@ -15,6 +15,7 @@ export type UserRow = {
   photo_url: string;
   password_hash: string | null;
   email_verified_at: string | null;
+  is_guest: boolean;
 };
 
 export type GroupRow = {
@@ -34,6 +35,7 @@ export type MemberRow = {
   email: string;
   nickname: string;
   photo_url: string;
+  is_guest: boolean;
 };
 
 export type MatchRow = {
@@ -58,6 +60,7 @@ export type MatchPlayerRow = {
   email: string;
   nickname: string;
   photo_url: string;
+  is_guest: boolean;
 };
 
 export type PlayerStats = {
@@ -67,4 +70,5 @@ export type PlayerStats = {
   losses: number;
   draws: number;
   played: number;
+  is_guest?: boolean;
 };

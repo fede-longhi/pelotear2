@@ -7,12 +7,14 @@ export async function playerStatsForGroup(
   const rows = await sql<{
     user_id: string;
     name: string;
+    is_guest: boolean;
     team: "A" | "B";
     goals_a: number;
     goals_b: number;
   }>(
     `select mp.user_id,
             coalesce(nullif(trim(u.nickname), ''), nullif(trim(u.name), ''), u.email) as name,
+            coalesce(u.is_guest, false) as is_guest,
             mp.team, m.goals_a, m.goals_b
      from match_players mp
      join matches m on m.id = mp.match_id
@@ -35,6 +37,7 @@ export async function playerStatsForGroup(
       losses: 0,
       draws: 0,
       played: 0,
+      is_guest: Boolean(row.is_guest),
     };
     cur.played += 1;
     if (row.goals_a === row.goals_b) cur.draws += 1;
