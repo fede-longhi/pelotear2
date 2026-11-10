@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { verifyEmailToken } from "@/lib/email";
+import { AFTER_AUTH_COOKIE, safeNextPath } from "@/lib/redirects";
 
 const DEV_VERIFY_COOKIE = "pelotear_dev_verify_url";
 
@@ -17,8 +19,17 @@ export async function GET(
     return NextResponse.redirect(url);
   }
 
-  const res = NextResponse.redirect(new URL("/perfil?verificado=1", base));
+  const jar = await cookies();
+  const after = safeNextPath(jar.get(AFTER_AUTH_COOKIE)?.value);
+  const dest = after || "/perfil?verificado=1";
+  const res = NextResponse.redirect(new URL(dest, base));
   res.cookies.set(DEV_VERIFY_COOKIE, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
+  res.cookies.set(AFTER_AUTH_COOKIE, "", {
     httpOnly: true,
     sameSite: "lax",
     path: "/",

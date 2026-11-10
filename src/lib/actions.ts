@@ -70,6 +70,12 @@ export async function joinGroupFromInvite(code: string) {
   redirect(`/grupos/${group.id}`);
 }
 
+/** Decline a group invite without joining. */
+export async function rejectGroupInvite() {
+  await requireVerifiedUser();
+  redirect("/grupos");
+}
+
 export async function createMatch(formData: FormData) {
   const user = await requireVerifiedUser();
   const groupId = String(formData.get("group_id") || "").trim();

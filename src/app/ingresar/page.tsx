@@ -6,17 +6,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getOptionalUser } from "@/lib/auth";
 import { loginAction } from "@/lib/auth-actions";
+import { safeNextPath, withNext } from "@/lib/redirects";
 
 export default async function IngresarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 }) {
+  const sp = await searchParams;
+  const next = safeNextPath(sp.next);
   const user = await getOptionalUser();
   if (user && !user.simulated) {
-    redirect(user.email_verified ? "/grupos" : "/verificar-email");
+    redirect(
+      user.email_verified
+        ? next || "/grupos"
+        : withNext("/verificar-email", next),
+    );
   }
-  const sp = await searchParams;
 
   return (
     <>
@@ -25,8 +31,14 @@ export default async function IngresarPage({
         <section className="section">
           <h2>Ingresar</h2>
           <p className="lead">Entrá con tu email y contraseña.</p>
+          {next ? (
+            <p className="pill pill-ok">
+              Después volvés a la invitación del grupo.
+            </p>
+          ) : null}
           {sp.error ? <p className="flash-error">{sp.error}</p> : null}
           <form action={loginAction} className="panel form-grid">
+            {next ? <input type="hidden" name="next" value={next} /> : null}
             <div className="field">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -52,7 +64,7 @@ export default async function IngresarPage({
             <div className="form-actions">
               <Button type="submit">Entrar</Button>
               <Button asChild variant="secondary">
-                <Link href="/registro">Crear cuenta</Link>
+                <Link href={withNext("/registro", next)}>Crear cuenta</Link>
               </Button>
             </div>
           </form>

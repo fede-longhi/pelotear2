@@ -1,5 +1,7 @@
+import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CopyInviteLink } from "@/components/CopyInviteLink";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +21,14 @@ import {
 } from "@/lib/queries";
 import { playerStatsForGroup } from "@/lib/stats";
 
+async function absoluteInviteUrl(code: string) {
+  const h = await headers();
+  const host =
+    h.get("x-forwarded-host") || h.get("host") || "pelotear2.vercel.app";
+  const proto = h.get("x-forwarded-proto") || "https";
+  return `${proto}://${host}/unirse/${code}`;
+}
+
 export default async function GroupPage({
   params,
 }: {
@@ -37,7 +47,8 @@ export default async function GroupPage({
     playerStatsForGroup(groupId),
   ]);
 
-  const inviteUrl = `/unirse/${group.invite_code}`;
+  const invitePath = `/unirse/${group.invite_code}`;
+  const inviteUrl = await absoluteInviteUrl(group.invite_code);
   const guests = members.filter((m) => m.is_guest);
   const realMembers = members.filter((m) => !m.is_guest);
 
@@ -51,9 +62,10 @@ export default async function GroupPage({
           <div className="panel invite-box">
             <span className="meta">Invitación</span>
             <span className="invite-code">{group.invite_code}</span>
-            <Link className="btn btn-secondary btn-small" href={inviteUrl}>
-              Link de ingreso
+            <Link className="btn btn-secondary btn-small" href={invitePath}>
+              Abrir invitación
             </Link>
+            <CopyInviteLink url={inviteUrl} />
           </div>
         </section>
 
