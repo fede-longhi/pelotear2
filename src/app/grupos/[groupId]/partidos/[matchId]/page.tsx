@@ -9,7 +9,7 @@ import {
   saveResult,
   setAttendance,
 } from "@/lib/actions";
-import { requireUser } from "@/lib/auth";
+import { requireVerifiedUser } from "@/lib/auth";
 import {
   getMatch,
   getMembership,
@@ -24,7 +24,7 @@ export default async function MatchPage({
   params: Promise<{ groupId: string; matchId: string }>;
 }) {
   const { groupId, matchId } = await params;
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   const membership = await getMembership(groupId, user.id);
   if (!membership) notFound();
   const match = await getMatch(matchId);

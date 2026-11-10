@@ -15,6 +15,9 @@ export function SiteHeader({ user }: { user: AppUser | null }) {
             <Link href="/grupos">Mis grupos</Link>
             <Link href="/unirse">Unirme</Link>
             <Link href="/perfil">Perfil</Link>
+            {!user.email_verified && !user.simulated ? (
+              <Link href="/verificar-email">Confirmar email</Link>
+            ) : null}
           </>
         ) : (
           <>

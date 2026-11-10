@@ -1,11 +1,20 @@
+import { AvatarPhotoUpload } from "@/components/AvatarPhotoUpload";
 import { SiteHeader } from "@/components/SiteHeader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { requireUser } from "@/lib/auth";
 import { updateProfileAction } from "@/lib/auth-actions";
 
 export default async function PerfilPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ok?: string; nuevo?: string; error?: string }>;
+  searchParams: Promise<{
+    ok?: string;
+    nuevo?: string;
+    error?: string;
+    verificado?: string;
+  }>;
 }) {
   const user = await requireUser();
   const sp = await searchParams;
@@ -21,22 +30,28 @@ export default async function PerfilPage({
             partidos y stats.
           </p>
           {sp.error ? <p className="flash-error">{sp.error}</p> : null}
+          {sp.verificado ? (
+            <p className="pill pill-ok">Email confirmado.</p>
+          ) : null}
           {sp.nuevo ? (
             <p className="pill pill-ok">Cuenta creada — completá tu perfil.</p>
           ) : null}
           {sp.ok ? (
             <p className="pill pill-ok">Perfil actualizado.</p>
           ) : null}
+          {!user.email_verified && !user.simulated ? (
+            <p className="flash-info">
+              Tu email aún no está confirmado.{" "}
+              <a href="/verificar-email">Confirmar ahora</a>
+            </p>
+          ) : null}
 
           <div className="panel profile-hero">
-            {user.photo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.photo_url} alt="" className="avatar-lg" />
-            ) : (
-              <div className="avatar-lg avatar-placeholder">
-                {user.name.slice(0, 1).toUpperCase()}
-              </div>
-            )}
+            <AvatarPhotoUpload
+              name={user.name}
+              photoUrl={user.photo_url}
+              editable={!user.simulated}
+            />
             <div>
               <strong>{user.name}</strong>
               <div className="meta">{user.email}</div>
@@ -44,70 +59,67 @@ export default async function PerfilPage({
                 <p className="meta">
                   Modo local demo — el perfil editable requiere una cuenta real.
                 </p>
-              ) : null}
+              ) : (
+                <p className="meta">Tocá el avatar para cambiar la foto.</p>
+              )}
             </div>
           </div>
 
           {!user.simulated ? (
-            <form
-              action={updateProfileAction}
-              className="panel form-grid"
-              encType="multipart/form-data"
-            >
+            <form action={updateProfileAction} className="panel form-grid">
               <div className="two-col">
-                <label>
-                  Nombre
-                  <input
+                <div className="field">
+                  <Label htmlFor="first_name">Nombre</Label>
+                  <Input
+                    id="first_name"
                     name="first_name"
                     required
                     defaultValue={user.first_name}
                     maxLength={60}
                   />
-                </label>
-                <label>
-                  Apellido
-                  <input
+                </div>
+                <div className="field">
+                  <Label htmlFor="last_name">Apellido</Label>
+                  <Input
+                    id="last_name"
                     name="last_name"
                     required
                     defaultValue={user.last_name}
                     maxLength={60}
                   />
-                </label>
+                </div>
               </div>
-              <label>
-                Apodo
-                <input
+              <div className="field">
+                <Label htmlFor="nickname">Apodo</Label>
+                <Input
+                  id="nickname"
                   name="nickname"
                   defaultValue={user.nickname}
                   maxLength={40}
                 />
-              </label>
-              <label>
-                Teléfono
-                <input
+              </div>
+              <div className="field">
+                <Label htmlFor="phone">Teléfono</Label>
+                <Input
+                  id="phone"
                   name="phone"
                   type="tel"
                   defaultValue={user.phone}
                   maxLength={30}
                   placeholder="+54 11 ..."
                 />
-              </label>
-              <label>
-                Fecha de nacimiento
-                <input
+              </div>
+              <div className="field">
+                <Label htmlFor="birth_date">Fecha de nacimiento</Label>
+                <Input
+                  id="birth_date"
                   name="birth_date"
                   type="date"
                   defaultValue={user.birth_date ?? ""}
                 />
-              </label>
-              <label>
-                Foto de perfil
-                <input name="photo" type="file" accept="image/*" />
-              </label>
+              </div>
               <div className="form-actions">
-                <button type="submit" className="btn btn-primary">
-                  Guardar perfil
-                </button>
+                <Button type="submit">Guardar perfil</Button>
               </div>
             </form>
           ) : null}

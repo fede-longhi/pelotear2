@@ -1,9 +1,12 @@
 import { SiteHeader } from "@/components/SiteHeader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { joinGroupByCode } from "@/lib/actions";
-import { requireUser } from "@/lib/auth";
+import { requireVerifiedUser } from "@/lib/auth";
 
 export default async function UnirsePage() {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
 
   return (
     <>
@@ -13,21 +16,20 @@ export default async function UnirsePage() {
           <h2>Unirme a un grupo</h2>
           <p className="lead">Pegá el código de invitación que te pasaron.</p>
           <form action={joinGroupByCode} className="panel form-grid">
-            <label>
-              Código
-              <input
+            <div className="field">
+              <Label htmlFor="code">Código</Label>
+              <Input
+                id="code"
                 name="code"
                 required
                 minLength={6}
                 maxLength={12}
                 placeholder="AB12CD34"
-                style={{ textTransform: "uppercase", letterSpacing: "0.12em" }}
+                className="uppercase tracking-[0.12em]"
               />
-            </label>
+            </div>
             <div className="form-actions">
-              <button type="submit" className="btn btn-primary">
-                Unirme
-              </button>
+              <Button type="submit">Unirme</Button>
             </div>
           </form>
         </section>

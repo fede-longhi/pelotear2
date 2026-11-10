@@ -1,9 +1,9 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
+import { Button } from "@/components/ui/button";
 import { joinGroupFromInvite } from "@/lib/actions";
-import { requireUser } from "@/lib/auth";
+import { requireVerifiedUser } from "@/lib/auth";
 import { getGroupByInvite, getMembership } from "@/lib/queries";
-import { redirect } from "next/navigation";
 
 export default async function InvitePage({
   params,
@@ -11,7 +11,7 @@ export default async function InvitePage({
   params: Promise<{ code: string }>;
 }) {
   const { code } = await params;
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   const group = await getGroupByInvite(code);
   if (!group) notFound();
 
@@ -34,9 +34,7 @@ export default async function InvitePage({
             }}
             className="panel form-actions"
           >
-            <button type="submit" className="btn btn-primary">
-              Unirme al grupo
-            </button>
+            <Button type="submit">Unirme al grupo</Button>
           </form>
         </section>
       </main>

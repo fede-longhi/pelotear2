@@ -25,6 +25,7 @@ export type AppUser = {
   phone: string;
   birth_date: string | null;
   photo_url: string;
+  email_verified: boolean;
   simulated: boolean;
 };
 
@@ -60,6 +61,7 @@ function mapUser(row: UserRow, simulated: boolean): AppUser {
     phone: row.phone || "",
     birth_date: asDateString(row.birth_date),
     photo_url: row.photo_url || "",
+    email_verified: Boolean(row.email_verified_at) || simulated,
     simulated,
   };
 }
@@ -67,18 +69,24 @@ function mapUser(row: UserRow, simulated: boolean): AppUser {
 async function loadUserById(id: string): Promise<UserRow | null> {
   const rows = await sql<UserRow>(
     `select id, email, name, first_name, last_name, nickname, phone,
-            birth_date::text as birth_date, photo_url, password_hash
+            birth_date::text as birth_date, photo_url, password_hash,
+            email_verified_at::text as email_verified_at
      from users where id = $1`,
     [id],
   );
   return rows[0] ?? null;
 }
 
-async function ensureDemoUser(persona: (typeof DEMO_PERSONAS)[number]): Promise<AppUser> {
+async function ensureDemoUser(
+  persona: (typeof DEMO_PERSONAS)[number],
+): Promise<AppUser> {
   await sql(
-    `insert into users (id, email, name, first_name, nickname)
-     values ($1, $2, $3, $3, $3)
-     on conflict (id) do update set email = excluded.email, name = excluded.name`,
+    `insert into users (id, email, name, first_name, nickname, email_verified_at)
+     values ($1, $2, $3, $3, $3, now())
+     on conflict (id) do update set
+       email = excluded.email,
+       name = excluded.name,
+       email_verified_at = coalesce(users.email_verified_at, now())`,
     [persona.id, persona.email, persona.name],
   );
   const row = await loadUserById(persona.id);
@@ -107,6 +115,13 @@ export async function getOptionalUser(): Promise<AppUser | null> {
 export async function requireUser(): Promise<AppUser> {
   const user = await getOptionalUser();
   if (!user) redirect("/ingresar");
+  return user;
+}
+
+/** Require login + verified email (demo users always pass). */
+export async function requireVerifiedUser(): Promise<AppUser> {
+  const user = await requireUser();
+  if (!user.email_verified) redirect("/verificar-email");
   return user;
 }
 
@@ -149,7 +164,11 @@ export async function registerUser(input: {
 
   const id = newId("usr");
   const password_hash = await bcrypt.hash(input.password, 10);
-  const name = displayName({ nickname: nick, first_name: first, last_name: last });
+  const name = displayName({
+    nickname: nick,
+    first_name: first,
+    last_name: last,
+  });
 
   await sql(
     `insert into users (id, email, name, password_hash, first_name, last_name, nickname)
@@ -161,11 +180,15 @@ export async function registerUser(input: {
   return mapUser(row!, false);
 }
 
-export async function loginUser(emailRaw: string, password: string): Promise<AppUser> {
+export async function loginUser(
+  emailRaw: string,
+  password: string,
+): Promise<AppUser> {
   const email = emailRaw.trim().toLowerCase();
   const rows = await sql<UserRow>(
     `select id, email, name, first_name, last_name, nickname, phone,
-            birth_date::text as birth_date, photo_url, password_hash
+            birth_date::text as birth_date, photo_url, password_hash,
+            email_verified_at::text as email_verified_at
      from users where lower(email) = $1 limit 1`,
     [email],
   );
@@ -194,14 +217,27 @@ export async function updateProfile(
   const nick = input.nickname.trim();
   if (!first || !last) throw new Error("Nombre y apellido son obligatorios.");
   const birth = input.birth_date.trim() || null;
-  const name = displayName({ nickname: nick, first_name: first, last_name: last });
+  const name = displayName({
+    nickname: nick,
+    first_name: first,
+    last_name: last,
+  });
 
   if (input.photo_url !== undefined) {
     await sql(
       `update users set first_name = $1, last_name = $2, nickname = $3, phone = $4,
          birth_date = $5, name = $6, photo_url = $7
        where id = $8`,
-      [first, last, nick, input.phone.trim(), birth, name, input.photo_url, userId],
+      [
+        first,
+        last,
+        nick,
+        input.phone.trim(),
+        birth,
+        name,
+        input.photo_url,
+        userId,
+      ],
     );
   } else {
     await sql(
@@ -212,6 +248,18 @@ export async function updateProfile(
     );
   }
 
+  const row = await loadUserById(userId);
+  return mapUser(row!, false);
+}
+
+export async function updatePhotoUrl(
+  userId: string,
+  photo_url: string,
+): Promise<AppUser> {
+  await sql(`update users set photo_url = $1 where id = $2`, [
+    photo_url,
+    userId,
+  ]);
   const row = await loadUserById(userId);
   return mapUser(row!, false);
 }

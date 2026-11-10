@@ -1,15 +1,18 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { createMatch } from "@/lib/actions";
-import { requireUser } from "@/lib/auth";
+import { requireVerifiedUser } from "@/lib/auth";
+import { playerLabel } from "@/lib/display";
 import {
   getGroup,
   getMembership,
   listMatches,
   listMembers,
 } from "@/lib/queries";
-import { playerLabel } from "@/lib/display";
 import { playerStatsForGroup } from "@/lib/stats";
 
 export default async function GroupPage({
@@ -18,7 +21,7 @@ export default async function GroupPage({
   params: Promise<{ groupId: string }>;
 }) {
   const { groupId } = await params;
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   const group = await getGroup(groupId);
   if (!group) notFound();
   const membership = await getMembership(groupId, user.id);
@@ -76,28 +79,33 @@ export default async function GroupPage({
             <h2>Nuevo partido</h2>
             <form action={createMatch} className="panel form-grid">
               <input type="hidden" name="group_id" value={groupId} />
-              <label>
-                Fecha
-                <input type="date" name="played_on" required />
-              </label>
-              <label>
-                Hora
-                <input type="time" name="kickoff_time" required defaultValue="20:00" />
-              </label>
-              <label>
-                Ubicación
-                <input
+              <div className="field">
+                <Label htmlFor="played_on">Fecha</Label>
+                <Input id="played_on" type="date" name="played_on" required />
+              </div>
+              <div className="field">
+                <Label htmlFor="kickoff_time">Hora</Label>
+                <Input
+                  id="kickoff_time"
+                  type="time"
+                  name="kickoff_time"
+                  required
+                  defaultValue="20:00"
+                />
+              </div>
+              <div className="field">
+                <Label htmlFor="location">Ubicación</Label>
+                <Input
+                  id="location"
                   name="location"
                   required
                   maxLength={120}
                   placeholder="Cancha 3, Club Norte"
                   defaultValue="Cancha 3"
                 />
-              </label>
+              </div>
               <div className="form-actions">
-                <button type="submit" className="btn btn-primary">
-                  Crear partido
-                </button>
+                <Button type="submit">Crear partido</Button>
               </div>
             </form>
           </div>
