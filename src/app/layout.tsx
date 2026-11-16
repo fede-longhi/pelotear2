@@ -18,6 +18,7 @@ export const metadata: Metadata = {
   title: "Pelotear",
   description:
     "Organizá partidos de fútbol con amigos: grupos, equipos, resultados y estadísticas.",
+  applicationName: "Pelotear",
 };
 
 export default function RootLayout({
