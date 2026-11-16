@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   assignTeam,
   autoGenerateTeams,
@@ -360,28 +362,32 @@ export default async function MatchPage({
               <input type="hidden" name="group_id" value={groupId} />
               <input type="hidden" name="match_id" value={matchId} />
               <div className="two-col">
-                <label>
-                  Goles equipo A
-                  <input
+                <div className="field">
+                  <Label htmlFor="goals_a">Goles equipo A</Label>
+                  <Input
+                    id="goals_a"
                     type="number"
                     name="goals_a"
                     min={0}
                     step={1}
                     required
                     defaultValue={0}
+                    inputMode="numeric"
                   />
-                </label>
-                <label>
-                  Goles equipo B
-                  <input
+                </div>
+                <div className="field">
+                  <Label htmlFor="goals_b">Goles equipo B</Label>
+                  <Input
+                    id="goals_b"
                     type="number"
                     name="goals_b"
                     min={0}
                     step={1}
                     required
                     defaultValue={0}
+                    inputMode="numeric"
                   />
-                </label>
+                </div>
               </div>
               <div className="form-actions">
                 <button type="submit" className="btn btn-primary">

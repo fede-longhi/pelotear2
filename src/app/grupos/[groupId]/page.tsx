@@ -4,8 +4,11 @@ import { notFound } from "next/navigation";
 import { CopyInviteLink } from "@/components/CopyInviteLink";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TimePicker } from "@/components/ui/time-picker";
 import {
   addGuestToGroup,
   createMatch,
@@ -152,21 +155,20 @@ export default async function GroupPage({
             <h2>Nuevo partido</h2>
             <form action={createMatch} className="panel form-grid">
               <input type="hidden" name="group_id" value={groupId} />
-              <div className="field">
+              <Field>
                 <Label htmlFor="played_on">Fecha</Label>
-                <Input id="played_on" type="date" name="played_on" required />
-              </div>
-              <div className="field">
+                <DatePicker id="played_on" name="played_on" required />
+              </Field>
+              <Field>
                 <Label htmlFor="kickoff_time">Hora</Label>
-                <Input
+                <TimePicker
                   id="kickoff_time"
-                  type="time"
                   name="kickoff_time"
                   required
                   defaultValue="20:00"
                 />
-              </div>
-              <div className="field">
+              </Field>
+              <Field>
                 <Label htmlFor="location">Ubicación</Label>
                 <Input
                   id="location"
@@ -176,7 +178,7 @@ export default async function GroupPage({
                   placeholder="Cancha 3, Club Norte"
                   defaultValue="Cancha 3"
                 />
-              </div>
+              </Field>
               <div className="form-actions">
                 <Button type="submit">Crear partido</Button>
               </div>

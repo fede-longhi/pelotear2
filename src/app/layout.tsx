@@ -20,7 +20,9 @@ export const metadata: Metadata = {
     "Organizá partidos de fútbol con amigos: grupos, equipos, resultados y estadísticas.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
       lang="es"

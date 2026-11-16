@@ -373,8 +373,7 @@ textarea {
   color: var(--muted);
 }
 
-.form-grid input,
-.form-grid select,
+/* Form controls live in components/ui/* — avoid raw input styling here. */
 .form-grid textarea {
   width: 100%;
   border: 1px solid var(--line);
@@ -382,6 +381,7 @@ textarea {
   color: var(--chalk);
   border-radius: 0.5rem;
   padding: 0.65rem 0.75rem;
+  cursor: text;
 }
 
 .form-actions {
@@ -573,6 +573,57 @@ textarea {
 .field {
   display: grid;
   gap: 0.4rem;
+}
+
+/* react-day-picker themed to Pelotear */
+.pelotear-calendar.rdp-root {
+  --rdp-accent-color: var(--gold);
+  --rdp-accent-background-color: rgba(226, 179, 74, 0.18);
+  --rdp-today-color: var(--gold);
+  --rdp-day_button-border-radius: 0.5rem;
+  --rdp-selected-border: 2px solid var(--gold);
+  color: var(--chalk);
+}
+
+.pelotear-calendar .rdp-caption_label {
+  color: var(--chalk);
+  font-weight: 600;
+}
+
+.pelotear-calendar .rdp-weekday {
+  color: var(--muted);
+}
+
+.pelotear-calendar .rdp-button_previous,
+.pelotear-calendar .rdp-button_next {
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  color: var(--muted);
+  background: transparent;
+}
+
+.pelotear-calendar .rdp-button_previous:hover,
+.pelotear-calendar .rdp-button_next:hover {
+  color: var(--chalk);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.pelotear-calendar .rdp-day_button {
+  color: var(--chalk);
+}
+
+.pelotear-calendar .rdp-day_button:hover:not([disabled]) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.pelotear-calendar .rdp-selected .rdp-day_button {
+  background: var(--gold);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.pelotear-calendar .rdp-outside .rdp-day_button {
+  color: color-mix(in srgb, var(--muted) 45%, transparent);
 }
 
 .sr-only {

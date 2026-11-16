@@ -1,6 +1,8 @@
 import { AvatarPhotoUpload } from "@/components/AvatarPhotoUpload";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { requireUser } from "@/lib/auth";
@@ -68,7 +70,7 @@ export default async function PerfilPage({
           {!user.simulated ? (
             <form action={updateProfileAction} className="panel form-grid">
               <div className="two-col">
-                <div className="field">
+                <Field>
                   <Label htmlFor="first_name">Nombre</Label>
                   <Input
                     id="first_name"
@@ -77,8 +79,8 @@ export default async function PerfilPage({
                     defaultValue={user.first_name}
                     maxLength={60}
                   />
-                </div>
-                <div className="field">
+                </Field>
+                <Field>
                   <Label htmlFor="last_name">Apellido</Label>
                   <Input
                     id="last_name"
@@ -87,9 +89,9 @@ export default async function PerfilPage({
                     defaultValue={user.last_name}
                     maxLength={60}
                   />
-                </div>
+                </Field>
               </div>
-              <div className="field">
+              <Field>
                 <Label htmlFor="nickname">Apodo</Label>
                 <Input
                   id="nickname"
@@ -97,8 +99,8 @@ export default async function PerfilPage({
                   defaultValue={user.nickname}
                   maxLength={40}
                 />
-              </div>
-              <div className="field">
+              </Field>
+              <Field>
                 <Label htmlFor="phone">Teléfono</Label>
                 <Input
                   id="phone"
@@ -108,16 +110,15 @@ export default async function PerfilPage({
                   maxLength={30}
                   placeholder="+54 11 ..."
                 />
-              </div>
-              <div className="field">
+              </Field>
+              <Field>
                 <Label htmlFor="birth_date">Fecha de nacimiento</Label>
-                <Input
+                <DatePicker
                   id="birth_date"
                   name="birth_date"
-                  type="date"
                   defaultValue={user.birth_date ?? ""}
                 />
-              </div>
+              </Field>
               <div className="form-actions">
                 <Button type="submit">Guardar perfil</Button>
               </div>
