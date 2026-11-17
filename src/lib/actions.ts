@@ -116,6 +116,36 @@ export async function createMatch(formData: FormData) {
   redirect(`/grupos/${groupId}/partidos/${id}`);
 }
 
+export async function updateMatchSchedule(formData: FormData) {
+  const user = await requireVerifiedUser();
+  const { groupId, matchId } = matchIds(formData);
+  const membership = await getMembership(groupId, user.id);
+  if (!membership) throw new Error("No sos miembro.");
+
+  const match = await getMatch(matchId);
+  if (!match || match.group_id !== groupId) {
+    throw new Error("Partido no encontrado.");
+  }
+  if (match.status !== "programado") {
+    throw new Error("Solo se puede reprogramar un partido programado.");
+  }
+
+  const playedOn = String(formData.get("played_on") || "").trim();
+  const kickoff = String(formData.get("kickoff_time") || "").trim();
+  const location = String(formData.get("location") || "").trim();
+  if (!playedOn || !kickoff || !location) {
+    throw new Error("Fecha, hora y ubicación son obligatorios.");
+  }
+
+  await sql(
+    `update matches
+     set played_on = $1, kickoff_time = $2, location = $3
+     where id = $4 and status = 'programado'`,
+    [playedOn, kickoff, location, matchId],
+  );
+  revalidateGroup(groupId, matchId);
+}
+
 function matchIds(formData: FormData) {
   const groupId = String(formData.get("group_id") || "").trim();
   const matchId = String(formData.get("match_id") || "").trim();

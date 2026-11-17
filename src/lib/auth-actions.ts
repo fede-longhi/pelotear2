@@ -5,23 +5,30 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { put } from "@vercel/blob";
 import {
+  findUserIdByEmail,
   loginUser,
   registerUser,
   requireUser,
   setDemoUser,
+  setUserPassword,
   updatePhotoUrl,
   updateProfile,
 } from "./auth";
 import {
+  consumePasswordResetToken,
   createEmailVerificationToken,
+  createPasswordResetToken,
   emailConfigured,
+  sendPasswordResetEmail,
   sendVerificationEmail,
   verifyEmailToken,
 } from "./email";
 import { rememberAfterAuth } from "./redirects";
 import { createSession, destroySession, demoModeEnabled } from "./session";
+import { sql } from "./db";
 
 const DEV_VERIFY_COOKIE = "pelotear_dev_verify_url";
+const DEV_RESET_COOKIE = "pelotear_dev_reset_url";
 
 function errMsg(error: unknown, fallback: string) {
   return error instanceof Error && error.message
@@ -237,6 +244,120 @@ export async function getDevVerifyUrl(): Promise<string | null> {
   const url = jar.get(DEV_VERIFY_COOKIE)?.value ?? null;
   if (!url) return null;
   // Expose on-page only when Resend is not configured (workable fallback).
+  if (!emailConfigured()) return url;
+  return null;
+}
+
+export async function requestPasswordResetAction(formData: FormData) {
+  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const userId = await findUserIdByEmail(email);
+
+  // Always redirect to the same success page to avoid account enumeration.
+  if (userId) {
+    try {
+      const rows = await sql<{ name: string; email: string }>(
+        `select coalesce(nullif(trim(nickname), ''), nullif(trim(name), ''), email) as name, email
+         from users where id = $1`,
+        [userId],
+      );
+      const user = rows[0];
+      if (user) {
+        const { url } = await createPasswordResetToken(userId);
+        const sent = await sendPasswordResetEmail({
+          to: user.email,
+          name: user.name,
+          url,
+        });
+        const jar = await cookies();
+        if (!sent.ok) {
+          if (emailConfigured()) {
+            redirect(
+              `/recuperar?error=${encodeURIComponent(sent.error || "No se pudo enviar el email.")}`,
+            );
+          }
+          jar.set(DEV_RESET_COOKIE, url, {
+            httpOnly: true,
+            sameSite: "lax",
+            path: "/",
+            maxAge: 60 * 60,
+          });
+        } else if (sent.mode === "dev" || !emailConfigured()) {
+          jar.set(DEV_RESET_COOKIE, url, {
+            httpOnly: true,
+            sameSite: "lax",
+            path: "/",
+            maxAge: 60 * 60,
+          });
+        } else {
+          jar.delete(DEV_RESET_COOKIE);
+        }
+      }
+    } catch (error) {
+      redirect(
+        `/recuperar?error=${encodeURIComponent(errMsg(error, "No se pudo enviar el email."))}`,
+      );
+    }
+  }
+  redirect("/recuperar?enviado=1");
+}
+
+export async function resetPasswordAction(formData: FormData) {
+  const token = String(formData.get("token") || "").trim();
+  const password = String(formData.get("password") || "");
+  const confirm = String(formData.get("password_confirm") || "");
+  if (password !== confirm) {
+    redirect(
+      `/recuperar/${token}?error=${encodeURIComponent("Las contraseñas no coinciden.")}`,
+    );
+  }
+
+  const consumed = await consumePasswordResetToken(token);
+  if (!consumed.ok || !consumed.userId) {
+    redirect(
+      `/recuperar?error=${encodeURIComponent(consumed.error || "Link inválido.")}`,
+    );
+  }
+
+  try {
+    await setUserPassword(consumed.userId, password);
+    await createSession(consumed.userId);
+  } catch (error) {
+    redirect(
+      `/recuperar/${token}?error=${encodeURIComponent(errMsg(error, "No se pudo guardar."))}`,
+    );
+  }
+  redirect("/grupos");
+}
+
+export async function setPasswordAction(formData: FormData) {
+  const user = await requireUser();
+  if (user.simulated) {
+    redirect(
+      `/perfil?error=${encodeURIComponent("En modo demo no se cambia la contraseña.")}`,
+    );
+  }
+  const password = String(formData.get("password") || "");
+  const confirm = String(formData.get("password_confirm") || "");
+  if (password !== confirm) {
+    redirect(
+      `/perfil?error=${encodeURIComponent("Las contraseñas no coinciden.")}`,
+    );
+  }
+  try {
+    await setUserPassword(user.id, password);
+  } catch (error) {
+    redirect(
+      `/perfil?error=${encodeURIComponent(errMsg(error, "No se pudo guardar."))}`,
+    );
+  }
+  revalidatePath("/perfil");
+  redirect("/perfil?ok=1");
+}
+
+export async function getDevResetUrl(): Promise<string | null> {
+  const jar = await cookies();
+  const url = jar.get(DEV_RESET_COOKIE)?.value ?? null;
+  if (!url) return null;
   if (!emailConfigured()) return url;
   return null;
 }

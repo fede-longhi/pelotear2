@@ -6,7 +6,10 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { requireUser } from "@/lib/auth";
-import { updateProfileAction } from "@/lib/auth-actions";
+import {
+  setPasswordAction,
+  updateProfileAction,
+} from "@/lib/auth-actions";
 
 export default async function PerfilPage({
   searchParams,
@@ -121,6 +124,50 @@ export default async function PerfilPage({
               </Field>
               <div className="form-actions">
                 <Button type="submit">Guardar perfil</Button>
+              </div>
+            </form>
+          ) : null}
+
+          {!user.simulated ? (
+            <form
+              action={setPasswordAction}
+              className="panel form-grid"
+              style={{ marginTop: "1rem" }}
+            >
+              <h3 style={{ margin: 0 }}>
+                {user.has_password ? "Cambiar contraseña" : "Crear contraseña"}
+              </h3>
+              <p className="meta" style={{ margin: 0 }}>
+                {user.has_password
+                  ? "Actualizá la contraseña para entrar también con email."
+                  : "Tu cuenta entró con Google. Podés agregar una contraseña para ingresar también con email."}
+              </p>
+              <Field>
+                <Label htmlFor="password">Nueva contraseña</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  name="password"
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                />
+              </Field>
+              <Field>
+                <Label htmlFor="password_confirm">Repetir contraseña</Label>
+                <Input
+                  id="password_confirm"
+                  type="password"
+                  name="password_confirm"
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                />
+              </Field>
+              <div className="form-actions">
+                <Button type="submit" variant="secondary">
+                  Guardar contraseña
+                </Button>
               </div>
             </form>
           ) : null}

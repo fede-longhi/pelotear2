@@ -137,6 +137,110 @@ export async function verifyEmailToken(token: string): Promise<{
   return { ok: true };
 }
 
+export async function createPasswordResetToken(
+  userId: string,
+): Promise<{ token: string; url: string }> {
+  await sql(
+    `update password_reset_tokens
+     set used_at = now()
+     where user_id = $1 and used_at is null`,
+    [userId],
+  );
+
+  const token = randomBytes(32).toString("hex");
+  const id = newId("prt");
+  const expires = new Date();
+  expires.setHours(expires.getHours() + TOKEN_HOURS);
+
+  await sql(
+    `insert into password_reset_tokens (id, user_id, token_hash, expires_at)
+     values ($1, $2, $3, $4)`,
+    [id, userId, hashToken(token), expires.toISOString()],
+  );
+
+  const url = `${appBaseUrl()}/recuperar/${token}`;
+  return { token, url };
+}
+
+export async function sendPasswordResetEmail(input: {
+  to: string;
+  name: string;
+  url: string;
+}): Promise<SendResult> {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const from =
+    process.env.EMAIL_FROM?.trim() || "Pelotear <onboarding@resend.dev>";
+
+  if (!apiKey) {
+    console.info(
+      `[email] RESEND_API_KEY missing — password reset for ${input.to}: ${input.url}`,
+    );
+    return { ok: true, mode: "dev" };
+  }
+
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({
+      from,
+      to: input.to,
+      subject: "Restablecé tu contraseña en Pelotear",
+      html: `
+        <p>Hola ${escapeHtml(input.name)},</p>
+        <p>Pediste restablecer tu contraseña. Usá este link:</p>
+        <p><a href="${input.url}">Elegir nueva contraseña</a></p>
+        <p>El link vence en ${TOKEN_HOURS} horas.</p>
+        <p>Si no pediste esto, ignorá el mensaje.</p>
+      `,
+      text: `Hola ${input.name},\n\nRestablecé tu contraseña: ${input.url}\n\nVence en ${TOKEN_HOURS} horas.`,
+    });
+    if (error) {
+      console.error("[email] Resend error", error);
+      return { ok: false, error: error.message || "No se pudo enviar el email." };
+    }
+    return { ok: true, mode: "resend" };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "No se pudo enviar el email.";
+    console.error("[email] send failed", error);
+    return { ok: false, error: message };
+  }
+}
+
+export async function consumePasswordResetToken(token: string): Promise<{
+  ok: boolean;
+  userId?: string;
+  error?: string;
+}> {
+  if (!token || token.length < 20) {
+    return { ok: false, error: "Link inválido." };
+  }
+
+  const rows = await sql<{
+    id: string;
+    user_id: string;
+    used_at: string | null;
+    expires_at: string;
+  }>(
+    `select id, user_id, used_at::text as used_at, expires_at::text as expires_at
+     from password_reset_tokens
+     where token_hash = $1
+     limit 1`,
+    [hashToken(token)],
+  );
+  const row = rows[0];
+  if (!row) return { ok: false, error: "Link inválido o ya usado." };
+  if (row.used_at) return { ok: false, error: "Este link ya fue usado." };
+  if (new Date(row.expires_at).getTime() < Date.now()) {
+    return { ok: false, error: "El link expiró. Pedí uno nuevo." };
+  }
+
+  await sql(
+    `update password_reset_tokens set used_at = now() where id = $1`,
+    [row.id],
+  );
+  return { ok: true, userId: row.user_id };
+}
+
 function escapeHtml(value: string): string {
   return value
     .replaceAll("&", "&amp;")

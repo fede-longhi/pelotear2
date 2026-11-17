@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 import { Ban } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TimePicker } from "@/components/ui/time-picker";
 import {
   assignTeam,
   autoGenerateTeams,
@@ -15,6 +17,7 @@ import {
   saveResult,
   setAttendance,
   setProxyAttendance,
+  updateMatchSchedule,
   updateTeamNames,
   voteMotm,
 } from "@/lib/actions";
@@ -91,6 +94,50 @@ export default async function MatchPage({
             {match.status}
           </span>
         </section>
+
+        {scheduled && (
+          <section className="section">
+            <h2>Reprogramar</h2>
+            <p className="lead">Cambiá fecha, hora o ubicación del partido.</p>
+            <form action={updateMatchSchedule} className="panel form-grid">
+              <input type="hidden" name="group_id" value={groupId} />
+              <input type="hidden" name="match_id" value={matchId} />
+              <Field>
+                <Label htmlFor="played_on">Fecha</Label>
+                <DatePicker
+                  id="played_on"
+                  name="played_on"
+                  required
+                  defaultValue={match.played_on}
+                />
+              </Field>
+              <Field>
+                <Label htmlFor="kickoff_time">Hora</Label>
+                <TimePicker
+                  id="kickoff_time"
+                  name="kickoff_time"
+                  required
+                  defaultValue={match.kickoff_time}
+                />
+              </Field>
+              <Field>
+                <Label htmlFor="location">Ubicación</Label>
+                <Input
+                  id="location"
+                  name="location"
+                  required
+                  maxLength={120}
+                  defaultValue={match.location}
+                />
+              </Field>
+              <div className="form-actions">
+                <Button type="submit" variant="secondary">
+                  Guardar cambios
+                </Button>
+              </div>
+            </form>
+          </section>
+        )}
 
         {played && (
           <section className="section panel">

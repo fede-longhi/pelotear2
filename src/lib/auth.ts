@@ -26,6 +26,7 @@ export type AppUser = {
   birth_date: string | null;
   photo_url: string;
   email_verified: boolean;
+  has_password: boolean;
   simulated: boolean;
 };
 
@@ -62,6 +63,7 @@ function mapUser(row: UserRow, simulated: boolean): AppUser {
     birth_date: asDateString(row.birth_date),
     photo_url: row.photo_url || "",
     email_verified: Boolean(row.email_verified_at) || simulated,
+    has_password: Boolean(row.password_hash) || simulated,
     simulated,
   };
 }
@@ -362,4 +364,33 @@ export async function updatePhotoUrl(
   ]);
   const row = await loadUserById(userId);
   return mapUser(row!, false);
+}
+
+export async function setUserPassword(
+  userId: string,
+  password: string,
+): Promise<void> {
+  if (password.length < 6) {
+    throw new Error("La contraseña debe tener al menos 6 caracteres.");
+  }
+  const password_hash = await bcrypt.hash(password, 10);
+  await sql(`update users set password_hash = $1 where id = $2`, [
+    password_hash,
+    userId,
+  ]);
+}
+
+export async function findUserIdByEmail(
+  emailRaw: string,
+): Promise<string | null> {
+  const email = emailRaw.trim().toLowerCase();
+  if (!email.includes("@")) return null;
+  const rows = await sql<{ id: string; is_guest: boolean }>(
+    `select id, coalesce(is_guest, false) as is_guest
+     from users where lower(email) = $1 limit 1`,
+    [email],
+  );
+  const row = rows[0];
+  if (!row || row.is_guest) return null;
+  return row.id;
 }
