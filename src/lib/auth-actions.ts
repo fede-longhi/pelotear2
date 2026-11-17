@@ -18,33 +18,10 @@ import {
   sendVerificationEmail,
   verifyEmailToken,
 } from "./email";
-import { AFTER_AUTH_COOKIE, safeNextPath } from "./redirects";
+import { rememberAfterAuth } from "./redirects";
 import { createSession, destroySession, demoModeEnabled } from "./session";
 
 const DEV_VERIFY_COOKIE = "pelotear_dev_verify_url";
-
-async function rememberAfterAuth(nextRaw: unknown) {
-  const next = safeNextPath(nextRaw);
-  const jar = await cookies();
-  if (!next) {
-    jar.delete(AFTER_AUTH_COOKIE);
-    return null;
-  }
-  jar.set(AFTER_AUTH_COOKIE, next, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 2,
-  });
-  return next;
-}
-
-export async function consumeAfterAuthPath(): Promise<string | null> {
-  const jar = await cookies();
-  const next = safeNextPath(jar.get(AFTER_AUTH_COOKIE)?.value);
-  jar.delete(AFTER_AUTH_COOKIE);
-  return next;
-}
 
 function errMsg(error: unknown, fallback: string) {
   return error instanceof Error && error.message

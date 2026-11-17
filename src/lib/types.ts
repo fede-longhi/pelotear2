@@ -15,6 +15,7 @@ export type UserRow = {
   photo_url: string;
   password_hash: string | null;
   email_verified_at: string | null;
+  google_sub: string | null;
   is_guest: boolean;
 };
 

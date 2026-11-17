@@ -30,6 +30,23 @@ npm run dev
 
 No commitees `.env` con secretos. En esta VM de cloud agent, si no hay `DATABASE_URL`, corré sin ella (PGlite).
 
+### Login con Google
+
+1. En [Google Cloud Console](https://console.cloud.google.com/apis/credentials) creá un OAuth client tipo **Web**.
+2. Authorized redirect URIs:
+   - `http://127.0.0.1:3000/api/auth/google/callback`
+   - `https://<tu-dominio>/api/auth/google/callback`
+3. Authorized JavaScript origins: los mismos hosts sin path.
+4. Variables de entorno (local y Vercel):
+
+```bash
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+APP_BASE_URL=https://<tu-dominio>   # debe coincidir con el redirect URI
+```
+
+Sin `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`, el botón no se habilita.
+
 ## Qué funciona (v1)
 
 1. Crear / unirse a grupos (código o link `/unirse/CODIGO`)
