@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireVerifiedUser } from "./auth";
 import { inviteCode, newId, sql } from "./db";
 import {
+  countMotmVotes,
   getGroup,
   getGroupByInvite,
   getMatch,
@@ -13,7 +14,7 @@ import {
   listMatchPlayers,
 } from "./queries";
 import { playerStatsForGroup } from "./stats";
-import { balanceTeams, mergeStats } from "./teams";
+import { balanceTeams, mergeStats, randomTeams } from "./teams";
 import type { Attendance, TeamSide } from "./types";
 
 function revalidateGroup(groupId: string, matchId?: string) {
@@ -169,6 +170,7 @@ export async function assignTeam(formData: FormData) {
 export async function autoGenerateTeams(formData: FormData) {
   const user = await requireVerifiedUser();
   const { groupId, matchId } = matchIds(formData);
+  const mode = String(formData.get("mode") || "balanced").trim();
   const membership = await getMembership(groupId, user.id);
   if (!membership) throw new Error("No sos miembro.");
   const match = await getMatch(matchId);
@@ -183,23 +185,52 @@ export async function autoGenerateTeams(formData: FormData) {
     throw new Error("Hacen falta al menos 2 confirmados para armar equipos.");
   }
 
-  const stats = await playerStatsForGroup(groupId);
-  const balanced = balanceTeams(
-    mergeStats(
-      players.map((p) => ({
-        user_id: p.user_id,
-        name: (p.nickname?.trim() || p.name || "Jugador").trim(),
-      })),
-      stats,
-    ),
-  );
+  const roster = players.map((p) => ({
+    user_id: p.user_id,
+    name: (p.nickname?.trim() || p.name || "Jugador").trim(),
+  }));
 
-  for (const row of balanced) {
+  const assignments =
+    mode === "random"
+      ? randomTeams(mergeStats(roster, []))
+      : balanceTeams(mergeStats(roster, await playerStatsForGroup(groupId)));
+
+  for (const row of assignments) {
     await sql(
       `update match_players set team = $1 where match_id = $2 and user_id = $3`,
       [row.team, matchId, row.user_id],
     );
   }
+  revalidateGroup(groupId, matchId);
+}
+
+export async function updateTeamNames(formData: FormData) {
+  const user = await requireVerifiedUser();
+  const { groupId, matchId } = matchIds(formData);
+  const membership = await getMembership(groupId, user.id);
+  if (!membership) throw new Error("No sos miembro.");
+  const match = await getMatch(matchId);
+  if (!match || match.group_id !== groupId) {
+    throw new Error("Partido no encontrado.");
+  }
+  if (match.status !== "programado") {
+    throw new Error("Solo se pueden editar nombres con el partido programado.");
+  }
+
+  const teamAName = String(formData.get("team_a_name") || "")
+    .trim()
+    .slice(0, 40);
+  const teamBName = String(formData.get("team_b_name") || "")
+    .trim()
+    .slice(0, 40);
+  if (!teamAName || !teamBName) {
+    throw new Error("Los dos equipos necesitan un nombre.");
+  }
+
+  await sql(
+    `update matches set team_a_name = $1, team_b_name = $2 where id = $3`,
+    [teamAName, teamBName, matchId],
+  );
   revalidateGroup(groupId, matchId);
 }
 
@@ -359,6 +390,17 @@ export async function voteMotm(formData: FormData) {
   }
 
   const players = await listMatchPlayers(matchId);
+  const voter = players.find(
+    (p) =>
+      p.user_id === user.id &&
+      p.attendance === "confirmed" &&
+      Boolean(p.team) &&
+      !p.is_guest,
+  );
+  if (!voter) {
+    throw new Error("Solo votan quienes jugaron el partido.");
+  }
+
   const nominee = players.find(
     (p) =>
       p.user_id === nomineeId &&
@@ -376,6 +418,51 @@ export async function voteMotm(formData: FormData) {
        set nominee_id = excluded.nominee_id,
            created_at = now()`,
     [matchId, user.id, nomineeId],
+  );
+
+  // Auto-reveal when every eligible voter (non-guest who played) has voted.
+  if (!match.motm_revealed_at) {
+    const eligible = players.filter(
+      (p) =>
+        p.attendance === "confirmed" &&
+        Boolean(p.team) &&
+        !p.is_guest,
+    ).length;
+    const votes = await countMotmVotes(matchId);
+    if (eligible > 0 && votes >= eligible) {
+      await sql(
+        `update matches set motm_revealed_at = now()
+         where id = $1 and motm_revealed_at is null`,
+        [matchId],
+      );
+    }
+  }
+
+  revalidateGroup(groupId, matchId);
+}
+
+export async function revealMotm(formData: FormData) {
+  const user = await requireVerifiedUser();
+  const { groupId, matchId } = matchIds(formData);
+  const membership = await getMembership(groupId, user.id);
+  if (membership?.role !== "admin") {
+    throw new Error("Solo un admin puede revelar la votación.");
+  }
+  const match = await getMatch(matchId);
+  if (!match || match.group_id !== groupId) {
+    throw new Error("Partido no encontrado.");
+  }
+  if (match.status !== "jugado") {
+    throw new Error("Solo se revela cuando el partido ya se jugó.");
+  }
+  if (match.motm_revealed_at) {
+    revalidateGroup(groupId, matchId);
+    return;
+  }
+
+  await sql(
+    `update matches set motm_revealed_at = now() where id = $1`,
+    [matchId],
   );
   revalidateGroup(groupId, matchId);
 }

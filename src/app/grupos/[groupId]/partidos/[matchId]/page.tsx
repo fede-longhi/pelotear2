@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Ban } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
+import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -8,13 +11,16 @@ import {
   autoGenerateTeams,
   cancelMatch,
   clearTeams,
+  revealMotm,
   saveResult,
   setAttendance,
   setProxyAttendance,
+  updateTeamNames,
   voteMotm,
 } from "@/lib/actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import {
+  countMotmVotes,
   getMatch,
   getMembership,
   getMyMotmVote,
@@ -46,16 +52,20 @@ export default async function MatchPage({
   const scheduled = match.status === "programado";
   const played = match.status === "jugado";
   const motmCandidates = confirmed.filter((p) => Boolean(p.team));
-  const [motmTally, myMotmVote] = played
+  const motmEligibleVoters = motmCandidates.filter((p) => !p.is_guest);
+  const motmRevealed = Boolean(match.motm_revealed_at);
+  const [motmTally, myMotmVote, totalMotmVotes] = played
     ? await Promise.all([
-        listMotmTally(matchId),
+        motmRevealed ? listMotmTally(matchId) : Promise.resolve([]),
         getMyMotmVote(matchId, user.id),
+        countMotmVotes(matchId),
       ])
-    : [[], null];
-  const topVotes = motmTally[0]?.votes ?? 0;
-  const winners =
-    topVotes > 0 ? motmTally.filter((r) => r.votes === topVotes) : [];
-  const totalMotmVotes = motmTally.reduce((sum, r) => sum + Number(r.votes), 0);
+    : [[], null, 0];
+  const motmTop3 = motmTally.slice(0, 3);
+  const canVoteMotm = motmEligibleVoters.some((p) => p.user_id === user.id);
+  const teamAName = match.team_a_name;
+  const teamBName = match.team_b_name;
+  const isAdmin = membership.role === "admin";
 
   return (
     <>
@@ -86,12 +96,12 @@ export default async function MatchPage({
           <section className="section panel">
             <div className="scoreboard">
               <div>
-                <div className="meta">Equipo A</div>
+                <div className="meta">{teamAName}</div>
                 <div className="score">{match.goals_a}</div>
               </div>
               <div className="meta">vs</div>
               <div>
-                <div className="meta">Equipo B</div>
+                <div className="meta">{teamBName}</div>
                 <div className="score">{match.goals_b}</div>
               </div>
             </div>
@@ -102,21 +112,58 @@ export default async function MatchPage({
           <section className="section">
             <h2>Jugador del partido</h2>
             <p className="lead">
-              Los miembros con cuenta votan a quien jugó. Los invitados no
-              votan, pero sí pueden recibir votos. Un voto por persona (se puede
-              cambiar).
+              Votos secretos. El top 3 se revela cuando votaron todos los
+              jugadores con cuenta, o cuando un admin lo publica. Los invitados
+              no votan, pero sí pueden recibir votos.
             </p>
 
-            {winners.length > 0 ? (
-              <p className="pill pill-ok motm-winner">
-                {winners.length === 1 ? "Ganador: " : "Empate: "}
-                {winners
-                  .map((w) => playerLabel(w) + (w.is_guest ? " (invitado)" : ""))
-                  .join(" · ")}{" "}
-                · {topVotes} {topVotes === 1 ? "voto" : "votos"}
-              </p>
+            <p className="meta" style={{ marginBottom: "0.85rem" }}>
+              {totalMotmVotes} de {motmEligibleVoters.length}{" "}
+              {motmEligibleVoters.length === 1 ? "voto" : "votos"} ·{" "}
+              {motmRevealed ? "Resultado revelado" : "En secreto"}
+            </p>
+
+            {motmRevealed ? (
+              motmTop3.length > 0 ? (
+                <div className="motm-top">
+                  {motmTop3.map((row, index) => (
+                    <div
+                      key={row.nominee_id}
+                      className={
+                        index === 0
+                          ? "motm-top-row is-first"
+                          : "motm-top-row"
+                      }
+                    >
+                      <span className="motm-rank">{index + 1}</span>
+                      <span>
+                        {playerLabel(row)}
+                        {row.is_guest ? " (invitado)" : ""}
+                      </span>
+                      <span className="motm-top-meta">
+                        {row.votes} {row.votes === 1 ? "voto" : "votos"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty">Todavía no hay votos.</p>
+              )
             ) : (
-              <p className="empty">Todavía no hay votos.</p>
+              <div className="panel" style={{ marginBottom: "1rem" }}>
+                <p className="meta" style={{ margin: 0 }}>
+                  El conteo está oculto hasta revelar el resultado.
+                </p>
+                {isAdmin ? (
+                  <form action={revealMotm} style={{ marginTop: "0.75rem" }}>
+                    <input type="hidden" name="group_id" value={groupId} />
+                    <input type="hidden" name="match_id" value={matchId} />
+                    <Button type="submit" variant="secondary" size="sm">
+                      Revelar resultado
+                    </Button>
+                  </form>
+                ) : null}
+              </div>
             )}
 
             {motmCandidates.length === 0 ? (
@@ -124,9 +171,10 @@ export default async function MatchPage({
             ) : (
               <div className="panel stack">
                 {motmCandidates.map((p) => {
-                  const tally =
-                    motmTally.find((t) => t.nominee_id === p.user_id)?.votes ??
-                    0;
+                  const tally = motmRevealed
+                    ? (motmTally.find((t) => t.nominee_id === p.user_id)
+                        ?.votes ?? 0)
+                    : null;
                   const selected = myMotmVote === p.user_id;
                   return (
                     <div key={p.user_id} className="player-row">
@@ -135,40 +183,40 @@ export default async function MatchPage({
                         {p.is_guest ? (
                           <span className="pill">invitado</span>
                         ) : null}
-                        <span className="meta">
-                          {tally} {tally === 1 ? "voto" : "votos"}
-                        </span>
+                        {tally !== null ? (
+                          <span className="meta">
+                            {tally} {tally === 1 ? "voto" : "votos"}
+                          </span>
+                        ) : null}
                       </span>
-                      <form action={voteMotm}>
-                        <input type="hidden" name="group_id" value={groupId} />
-                        <input type="hidden" name="match_id" value={matchId} />
-                        <input
-                          type="hidden"
-                          name="nominee_id"
-                          value={p.user_id}
-                        />
-                        <button
-                          type="submit"
-                          className={
-                            selected
-                              ? "btn btn-small btn-primary"
-                              : "btn btn-small btn-secondary"
-                          }
-                        >
-                          {selected ? "Tu voto" : "Votar"}
-                        </button>
-                      </form>
+                      {canVoteMotm ? (
+                        <form action={voteMotm}>
+                          <input type="hidden" name="group_id" value={groupId} />
+                          <input type="hidden" name="match_id" value={matchId} />
+                          <input
+                            type="hidden"
+                            name="nominee_id"
+                            value={p.user_id}
+                          />
+                          <button
+                            type="submit"
+                            className={
+                              selected
+                                ? "btn btn-small btn-primary"
+                                : "btn btn-small btn-secondary"
+                            }
+                          >
+                            {selected ? "Tu voto" : "Votar"}
+                          </button>
+                        </form>
+                      ) : selected ? (
+                        <span className="pill pill-ok">Tu voto</span>
+                      ) : null}
                     </div>
                   );
                 })}
               </div>
             )}
-            {totalMotmVotes > 0 ? (
-              <p className="meta" style={{ marginTop: "0.75rem" }}>
-                Total: {totalMotmVotes}{" "}
-                {totalMotmVotes === 1 ? "voto" : "votos"}
-              </p>
-            ) : null}
           </section>
         )}
 
@@ -268,7 +316,9 @@ export default async function MatchPage({
                   </span>
                   <span className="meta">
                     {p.attendance}
-                    {p.team ? ` · equipo ${p.team}` : ""}
+                    {p.team
+                      ? ` · ${p.team === "A" ? teamAName : teamBName}`
+                      : ""}
                   </span>
                 </div>
               ))
@@ -279,15 +329,62 @@ export default async function MatchPage({
         <section className="section">
           <h2>Equipos</h2>
           <p className="lead">
-            Manual o automático (balancea con W/L/D del grupo).
+            Manual, al azar, o balanceados con W/L/D del grupo.
           </p>
+
+          {scheduled && (
+            <form
+              action={updateTeamNames}
+              className="panel team-name-form form-grid"
+            >
+              <input type="hidden" name="group_id" value={groupId} />
+              <input type="hidden" name="match_id" value={matchId} />
+              <div className="two-col">
+                <Field>
+                  <Label htmlFor="team_a_name">Nombre equipo A</Label>
+                  <Input
+                    id="team_a_name"
+                    name="team_a_name"
+                    defaultValue={teamAName}
+                    maxLength={40}
+                    required
+                  />
+                </Field>
+                <Field>
+                  <Label htmlFor="team_b_name">Nombre equipo B</Label>
+                  <Input
+                    id="team_b_name"
+                    name="team_b_name"
+                    defaultValue={teamBName}
+                    maxLength={40}
+                    required
+                  />
+                </Field>
+              </div>
+              <div className="form-actions">
+                <Button type="submit" variant="secondary" size="sm">
+                  Guardar nombres
+                </Button>
+              </div>
+            </form>
+          )}
+
           {scheduled && (
             <div className="form-actions" style={{ marginBottom: "1rem" }}>
               <form action={autoGenerateTeams}>
                 <input type="hidden" name="group_id" value={groupId} />
                 <input type="hidden" name="match_id" value={matchId} />
+                <input type="hidden" name="mode" value="balanced" />
                 <button type="submit" className="btn btn-primary">
-                  Generar equipos
+                  Generar balanceados
+                </button>
+              </form>
+              <form action={autoGenerateTeams}>
+                <input type="hidden" name="group_id" value={groupId} />
+                <input type="hidden" name="match_id" value={matchId} />
+                <input type="hidden" name="mode" value="random" />
+                <button type="submit" className="btn btn-secondary">
+                  Generar al azar
                 </button>
               </form>
               <form action={clearTeams}>
@@ -302,14 +399,14 @@ export default async function MatchPage({
 
           <div className="team-board">
             <TeamPanel
-              title="Equipo A"
+              title={teamAName}
               players={teamA}
               scheduled={scheduled}
               groupId={groupId}
               matchId={matchId}
             />
             <TeamPanel
-              title="Equipo B"
+              title={teamBName}
               players={teamB}
               scheduled={scheduled}
               groupId={groupId}
@@ -363,7 +460,7 @@ export default async function MatchPage({
               <input type="hidden" name="match_id" value={matchId} />
               <div className="two-col">
                 <div className="field">
-                  <Label htmlFor="goals_a">Goles equipo A</Label>
+                  <Label htmlFor="goals_a">Goles {teamAName}</Label>
                   <Input
                     id="goals_a"
                     type="number"
@@ -376,7 +473,7 @@ export default async function MatchPage({
                   />
                 </div>
                 <div className="field">
-                  <Label htmlFor="goals_b">Goles equipo B</Label>
+                  <Label htmlFor="goals_b">Goles {teamBName}</Label>
                   <Input
                     id="goals_b"
                     type="number"
@@ -395,11 +492,12 @@ export default async function MatchPage({
                 </button>
               </div>
             </form>
-            {membership.role === "admin" && (
+            {isAdmin && (
               <form action={cancelMatch} style={{ marginTop: "0.75rem" }}>
                 <input type="hidden" name="group_id" value={groupId} />
                 <input type="hidden" name="match_id" value={matchId} />
                 <button type="submit" className="btn btn-danger">
+                  <Ban size={16} aria-hidden="true" />
                   Cancelar partido
                 </button>
               </form>

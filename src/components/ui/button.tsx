@@ -13,7 +13,7 @@ const buttonVariants = cva(
         secondary:
           "border border-[var(--line)] bg-transparent text-[var(--chalk)] hover:bg-white/5",
         danger:
-          "border border-[rgba(232,93,76,0.5)] bg-transparent text-[#ffb4aa] hover:bg-[rgba(232,93,76,0.12)]",
+          "border border-[var(--coral)] bg-[var(--coral)] text-[#fff8f6] hover:brightness-105",
         ghost: "bg-transparent text-[var(--muted)] hover:text-[var(--chalk)]",
       },
       size: {
