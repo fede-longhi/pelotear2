@@ -74,6 +74,12 @@ export type PlayerStats = {
   losses: number;
   draws: number;
   played: number;
+  /** Current consecutive wins ending at the latest match. */
+  streak: number;
+  /** Times finishing 1st (or tied) in revealed MOTM. */
+  motm: number;
+  /** Last up to 5 results, oldest→newest, e.g. WDLWW. */
+  form: string;
   is_guest?: boolean;
 };
 

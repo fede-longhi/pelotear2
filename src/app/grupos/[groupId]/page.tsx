@@ -220,7 +220,9 @@ export default async function GroupPage({
 
         <section className="section">
           <h2>Estadísticas</h2>
-          <p className="lead">W / L / D según el equipo en el que jugaste.</p>
+          <p className="lead">
+            Ranking del grupo: W/L/D, racha actual, forma (últimos 5) y MOTM.
+          </p>
           {stats.length === 0 ? (
             <p className="empty">Todavía no hay partidos jugados.</p>
           ) : (
@@ -233,6 +235,9 @@ export default async function GroupPage({
                     <th>G</th>
                     <th>E</th>
                     <th>P</th>
+                    <th>Racha</th>
+                    <th>Forma</th>
+                    <th>MOTM</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -250,6 +255,28 @@ export default async function GroupPage({
                       <td>{s.wins}</td>
                       <td>{s.draws}</td>
                       <td>{s.losses}</td>
+                      <td>{s.streak > 0 ? `${s.streak}G` : "—"}</td>
+                      <td>
+                        <span className="form-pills" aria-label={`Forma ${s.form || "sin datos"}`}>
+                          {(s.form || "—").split("").map((ch, i) => (
+                            <span
+                              key={`${s.user_id}-form-${i}`}
+                              className={
+                                ch === "W"
+                                  ? "form-pill form-w"
+                                  : ch === "D"
+                                    ? "form-pill form-d"
+                                    : ch === "L"
+                                      ? "form-pill form-l"
+                                      : "form-pill"
+                              }
+                            >
+                              {ch}
+                            </span>
+                          ))}
+                        </span>
+                      </td>
+                      <td>{s.motm}</td>
                     </tr>
                   ))}
                 </tbody>

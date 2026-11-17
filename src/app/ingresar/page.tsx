@@ -74,6 +74,9 @@ export default async function IngresarPage({
                   <Link href={withNext("/registro", next)}>Crear cuenta</Link>
                 </Button>
               </div>
+              <p className="meta" style={{ margin: "0.35rem 0 0" }}>
+                <Link href="/recuperar">Olvidé mi contraseña</Link>
+              </p>
             </form>
           </div>
         </section>
