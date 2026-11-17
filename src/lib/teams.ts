@@ -8,10 +8,10 @@ export type BalancePlayer = {
   draws?: number;
 };
 
+export type TeamAssignment = { user_id: string; team: TeamSide };
+
 /** Simple balanced split: seed by W/L/D strength, snake-draft into A/B. */
-export function balanceTeams(
-  players: BalancePlayer[],
-): { user_id: string; team: TeamSide }[] {
+export function balanceTeams(players: BalancePlayer[]): TeamAssignment[] {
   if (players.length === 0) return [];
 
   const ranked = [...players].sort((a, b) => strength(b) - strength(a));
@@ -36,6 +36,22 @@ export function balanceTeams(
     ...teamA.map((p) => ({ user_id: p.user_id, team: "A" as const })),
     ...teamB.map((p) => ({ user_id: p.user_id, team: "B" as const })),
   ];
+}
+
+/** Fisher–Yates shuffle then alternate A/B for even sizes. */
+export function randomTeams(players: BalancePlayer[]): TeamAssignment[] {
+  if (players.length === 0) return [];
+  const shuffled = [...players];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = shuffled[i];
+    shuffled[i] = shuffled[j];
+    shuffled[j] = tmp;
+  }
+  return shuffled.map((p, index) => ({
+    user_id: p.user_id,
+    team: (index % 2 === 0 ? "A" : "B") as TeamSide,
+  }));
 }
 
 function strength(p: BalancePlayer): number {

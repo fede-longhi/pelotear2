@@ -28,6 +28,11 @@ function normalizeMatch(row: MatchRow): MatchRow {
     created_at: asIso(row.created_at),
     goals_a: row.goals_a === null || row.goals_a === undefined ? null : Number(row.goals_a),
     goals_b: row.goals_b === null || row.goals_b === undefined ? null : Number(row.goals_b),
+    team_a_name: (row.team_a_name?.trim() || "Equipo A").slice(0, 40),
+    team_b_name: (row.team_b_name?.trim() || "Equipo B").slice(0, 40),
+    motm_revealed_at: row.motm_revealed_at
+      ? asIso(row.motm_revealed_at)
+      : null,
   };
 }
 
@@ -139,4 +144,12 @@ export async function listMotmTally(matchId: string): Promise<MotmTallyRow[]> {
      order by votes desc, u.name asc`,
     [matchId],
   );
+}
+
+export async function countMotmVotes(matchId: string): Promise<number> {
+  const rows = await sql<{ n: number }>(
+    `select count(*)::int as n from match_motm_votes where match_id = $1`,
+    [matchId],
+  );
+  return Number(rows[0]?.n ?? 0);
 }

@@ -47,6 +47,9 @@ export type MatchRow = {
   status: MatchStatus;
   goals_a: number | null;
   goals_b: number | null;
+  team_a_name: string;
+  team_b_name: string;
+  motm_revealed_at: string | null;
   created_by: string;
   created_at: string;
 };

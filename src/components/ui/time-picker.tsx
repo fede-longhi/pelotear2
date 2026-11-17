@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Clock } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 type TimePickerProps = {
@@ -44,43 +45,104 @@ export function TimePicker({
 }: TimePickerProps) {
   const slots = React.useMemo(() => buildSlots(stepMinutes), [stepMinutes]);
   const initial = normalizeTime(defaultValue) || "20:00";
+  const [open, setOpen] = React.useState(false);
   const [value, setValue] = React.useState(
-    slots.includes(initial) ? initial : slots[0] ?? "20:00",
+    slots.includes(initial) ? initial : (slots[0] ?? "20:00"),
   );
+  const listRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const frame = requestAnimationFrame(() => {
+      const selected = listRef.current?.querySelector<HTMLElement>(
+        '[data-selected="true"]',
+      );
+      selected?.scrollIntoView({ block: "center" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [open, value]);
 
   return (
     <div className={cn("relative", className)}>
-      <Clock
-        className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--gold)]"
-        aria-hidden
-      />
-      <select
-        id={id}
+      <input
         name={name}
-        required={required}
-        disabled={disabled}
-        aria-invalid={ariaInvalid}
         value={value}
-        onChange={(e) => setValue(e.target.value)}
-        className={cn(
-          "flex h-10 w-full cursor-pointer appearance-none rounded-md border border-[var(--line)] bg-white/[0.06] py-2 pl-10 pr-9 text-sm text-[var(--chalk)] shadow-sm transition-colors",
-          "hover:bg-white/[0.08]",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] focus-visible:border-[var(--gold)]/60",
-          "disabled:cursor-not-allowed disabled:opacity-50",
-        )}
-      >
-        {slots.map((slot) => (
-          <option key={slot} value={slot} className="bg-[var(--sky-top)] text-[var(--chalk)]">
-            {slot}
-          </option>
-        ))}
-      </select>
-      <span
+        required={required}
+        readOnly
+        tabIndex={-1}
         aria-hidden
-        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
-      >
-        ▾
-      </span>
+        className="sr-only"
+        onInvalid={(e) => {
+          e.preventDefault();
+          setOpen(true);
+        }}
+        onChange={() => {}}
+      />
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            id={id}
+            type="button"
+            disabled={disabled}
+            aria-invalid={ariaInvalid}
+            aria-haspopup="listbox"
+            aria-expanded={open}
+            className={cn(
+              "flex h-10 w-full cursor-pointer items-center gap-2 rounded-md border border-[var(--line)] bg-white/[0.06] px-3 py-2 text-left text-sm text-[var(--chalk)] shadow-sm transition-colors",
+              "hover:bg-white/[0.08]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] focus-visible:border-[var(--gold)]/60",
+              "disabled:cursor-not-allowed disabled:opacity-50",
+            )}
+          >
+            <Clock className="size-4 shrink-0 text-[var(--gold)]" aria-hidden />
+            <span className="flex-1 truncate">{value}</span>
+            <span aria-hidden className="text-[var(--muted)]">
+              ▾
+            </span>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          side="bottom"
+          sideOffset={6}
+          avoidCollisions
+          collisionPadding={12}
+          className="w-[var(--radix-popover-trigger-width)] p-1"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <div
+            ref={listRef}
+            role="listbox"
+            aria-label="Elegí una hora"
+            className="max-h-52 overflow-y-auto overscroll-contain py-0.5"
+          >
+            {slots.map((slot) => {
+              const selected = slot === value;
+              return (
+                <button
+                  key={slot}
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  data-selected={selected ? "true" : undefined}
+                  className={cn(
+                    "flex h-8 w-full cursor-pointer items-center rounded-md px-2.5 text-sm transition-colors",
+                    selected
+                      ? "bg-[var(--gold)] font-semibold text-[var(--ink)]"
+                      : "text-[var(--chalk)] hover:bg-white/[0.08]",
+                  )}
+                  onClick={() => {
+                    setValue(slot);
+                    setOpen(false);
+                  }}
+                >
+                  {slot}
+                </button>
+              );
+            })}
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }
