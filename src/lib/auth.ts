@@ -66,15 +66,117 @@ function mapUser(row: UserRow, simulated: boolean): AppUser {
   };
 }
 
+const USER_SELECT = `id, email, name, first_name, last_name, nickname, phone,
+            birth_date::text as birth_date, photo_url, password_hash,
+            email_verified_at::text as email_verified_at,
+            google_sub, coalesce(is_guest, false) as is_guest`;
+
 async function loadUserById(id: string): Promise<UserRow | null> {
   const rows = await sql<UserRow>(
-    `select id, email, name, first_name, last_name, nickname, phone,
-            birth_date::text as birth_date, photo_url, password_hash,
-            email_verified_at::text as email_verified_at
+    `select ${USER_SELECT}
      from users where id = $1`,
     [id],
   );
   return rows[0] ?? null;
+}
+
+export type GoogleAuthProfile = {
+  sub: string;
+  email: string;
+  given_name: string;
+  family_name: string;
+  name: string;
+  picture: string;
+};
+
+/** Find or create a user from a verified Google profile, then return AppUser. */
+export async function loginOrRegisterWithGoogle(
+  profile: GoogleAuthProfile,
+): Promise<AppUser> {
+  const email = profile.email.trim().toLowerCase();
+  const sub = profile.sub.trim();
+  if (!sub || !email.includes("@")) {
+    throw new Error("Perfil de Google inválido.");
+  }
+
+  const bySub = await sql<UserRow>(
+    `select ${USER_SELECT}
+     from users where google_sub = $1 limit 1`,
+    [sub],
+  );
+  if (bySub[0]) {
+    if (bySub[0].is_guest) {
+      throw new Error("Esta cuenta no puede iniciar sesión con Google.");
+    }
+    return mapUser(bySub[0], false);
+  }
+
+  const byEmail = await sql<UserRow>(
+    `select ${USER_SELECT}
+     from users where lower(email) = $1 limit 1`,
+    [email],
+  );
+  if (byEmail[0]) {
+    if (byEmail[0].is_guest) {
+      throw new Error("Esta cuenta no puede iniciar sesión con Google.");
+    }
+    const row = byEmail[0];
+    const first =
+      row.first_name?.trim() ||
+      profile.given_name ||
+      profile.name.split(/\s+/)[0] ||
+      "";
+    const last =
+      row.last_name?.trim() ||
+      profile.family_name ||
+      profile.name.split(/\s+/).slice(1).join(" ") ||
+      "";
+    const photo = row.photo_url?.trim() || profile.picture || "";
+    const name = displayName({
+      nickname: row.nickname,
+      first_name: first,
+      last_name: last,
+      name: row.name,
+      email,
+    });
+
+    await sql(
+      `update users set
+         google_sub = $1,
+         email_verified_at = coalesce(email_verified_at, now()),
+         first_name = case when first_name = '' then $2 else first_name end,
+         last_name = case when last_name = '' then $3 else last_name end,
+         photo_url = case when photo_url = '' then $4 else photo_url end,
+         name = $5
+       where id = $6`,
+      [sub, first, last, photo, name, row.id],
+    );
+    const updated = await loadUserById(row.id);
+    return mapUser(updated!, false);
+  }
+
+  const id = newId("usr");
+  const first =
+    profile.given_name || profile.name.split(/\s+/)[0] || email.split("@")[0];
+  const last =
+    profile.family_name || profile.name.split(/\s+/).slice(1).join(" ") || "";
+  const name = displayName({
+    first_name: first,
+    last_name: last,
+    name: profile.name,
+    email,
+  });
+
+  await sql(
+    `insert into users (
+       id, email, name, first_name, last_name, photo_url,
+       google_sub, email_verified_at
+     ) values ($1, $2, $3, $4, $5, $6, $7, now())`,
+    [id, email, name, first, last, profile.picture || "", sub],
+  );
+
+  const created = await loadUserById(id);
+  return mapUser(created!, false);
 }
 
 async function ensureDemoUser(
@@ -186,9 +288,7 @@ export async function loginUser(
 ): Promise<AppUser> {
   const email = emailRaw.trim().toLowerCase();
   const rows = await sql<UserRow>(
-    `select id, email, name, first_name, last_name, nickname, phone,
-            birth_date::text as birth_date, photo_url, password_hash,
-            email_verified_at::text as email_verified_at
+    `select ${USER_SELECT}
      from users where lower(email) = $1 limit 1`,
     [email],
   );
