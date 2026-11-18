@@ -39,6 +39,8 @@ export async function playerStatsForGroup(
      join users u on u.id = mp.user_id
      where m.group_id = $1
        and m.status = 'jugado'
+       and m.deleted_at is null
+       and mp.deleted_at is null
        and mp.attendance = 'confirmed'
        and mp.team is not null
        and m.goals_a is not null
@@ -54,6 +56,7 @@ export async function playerStatsForGroup(
        join matches m on m.id = v.match_id
        where m.group_id = $1
          and m.status = 'jugado'
+         and m.deleted_at is null
          and m.motm_revealed_at is not null
        group by v.match_id, v.nominee_id
      ),

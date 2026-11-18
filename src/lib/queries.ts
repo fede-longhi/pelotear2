@@ -39,10 +39,13 @@ function normalizeMatch(row: MatchRow): MatchRow {
 export async function listGroupsForUser(userId: string) {
   const rows = await sql<GroupRow & { role: string; member_count: number }>(
     `select g.*, gm.role,
-            (select count(*)::int from group_members x where x.group_id = g.id) as member_count
+            (select count(*)::int from group_members x
+              where x.group_id = g.id and x.deleted_at is null) as member_count
      from groups g
      join group_members gm on gm.group_id = g.id
      where gm.user_id = $1
+       and g.deleted_at is null
+       and gm.deleted_at is null
      order by g.created_at desc`,
     [userId],
   );
@@ -50,15 +53,17 @@ export async function listGroupsForUser(userId: string) {
 }
 
 export async function getGroup(groupId: string) {
-  const rows = await sql<GroupRow>(`select * from groups where id = $1`, [
-    groupId,
-  ]);
+  const rows = await sql<GroupRow>(
+    `select * from groups where id = $1 and deleted_at is null`,
+    [groupId],
+  );
   return rows[0] ? normalizeGroup(rows[0]) : null;
 }
 
 export async function getGroupByInvite(code: string) {
   const rows = await sql<GroupRow>(
-    `select * from groups where invite_code = $1`,
+    `select * from groups
+     where invite_code = $1 and deleted_at is null`,
     [code.toUpperCase()],
   );
   return rows[0] ? normalizeGroup(rows[0]) : null;
@@ -66,7 +71,8 @@ export async function getGroupByInvite(code: string) {
 
 export async function getMembership(groupId: string, userId: string) {
   const rows = await sql<{ role: string }>(
-    `select role from group_members where group_id = $1 and user_id = $2`,
+    `select role from group_members
+     where group_id = $1 and user_id = $2 and deleted_at is null`,
     [groupId, userId],
   );
   return rows[0] ?? null;
@@ -79,6 +85,7 @@ export async function listMembers(groupId: string) {
      from group_members gm
      join users u on u.id = gm.user_id
      where gm.group_id = $1
+       and gm.deleted_at is null
      order by u.is_guest asc, gm.role desc, u.name`,
     [groupId],
   );
@@ -94,7 +101,8 @@ export async function getUserFlags(userId: string) {
 
 export async function listMatches(groupId: string) {
   const rows = await sql<MatchRow>(
-    `select * from matches where group_id = $1
+    `select * from matches
+     where group_id = $1 and deleted_at is null
      order by played_on desc, kickoff_time desc`,
     [groupId],
   );
@@ -102,9 +110,15 @@ export async function listMatches(groupId: string) {
 }
 
 export async function getMatch(matchId: string) {
-  const rows = await sql<MatchRow>(`select * from matches where id = $1`, [
-    matchId,
-  ]);
+  const rows = await sql<MatchRow>(
+    `select m.*
+     from matches m
+     join groups g on g.id = m.group_id
+     where m.id = $1
+       and m.deleted_at is null
+       and g.deleted_at is null`,
+    [matchId],
+  );
   return rows[0] ? normalizeMatch(rows[0]) : null;
 }
 
@@ -115,6 +129,7 @@ export async function listMatchPlayers(matchId: string) {
      from match_players mp
      join users u on u.id = mp.user_id
      where mp.match_id = $1
+       and mp.deleted_at is null
      order by u.is_guest asc, mp.team nulls last, u.name`,
     [matchId],
   );

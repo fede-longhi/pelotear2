@@ -41,6 +41,47 @@ export async function createGroup(formData: FormData) {
   redirect(`/grupos/${id}`);
 }
 
+export async function deleteGroup(formData: FormData) {
+  const user = await requireVerifiedUser();
+  const groupId = String(formData.get("group_id") || "").trim();
+  if (!groupId) throw new Error("Grupo inválido.");
+
+  const membership = await getMembership(groupId, user.id);
+  if (membership?.role !== "admin") {
+    throw new Error("Solo un admin puede eliminar el grupo.");
+  }
+  const group = await getGroup(groupId);
+  if (!group) throw new Error("Grupo no encontrado.");
+
+  await sql(
+    `update groups set deleted_at = now()
+     where id = $1 and deleted_at is null`,
+    [groupId],
+  );
+  await sql(
+    `update matches set deleted_at = now()
+     where group_id = $1 and deleted_at is null`,
+    [groupId],
+  );
+  await sql(
+    `update group_members set deleted_at = now()
+     where group_id = $1 and deleted_at is null`,
+    [groupId],
+  );
+  await sql(
+    `update match_players mp
+     set deleted_at = now()
+     from matches m
+     where mp.match_id = m.id
+       and m.group_id = $1
+       and mp.deleted_at is null`,
+    [groupId],
+  );
+  revalidatePath("/");
+  revalidatePath("/grupos");
+  redirect("/grupos");
+}
+
 export async function joinGroupByCode(formData: FormData) {
   const user = await requireVerifiedUser();
   const code = String(formData.get("code") || "")
@@ -52,7 +93,8 @@ export async function joinGroupByCode(formData: FormData) {
   await sql(
     `insert into group_members (group_id, user_id, role)
      values ($1, $2, 'member')
-     on conflict do nothing`,
+     on conflict (group_id, user_id) do update
+       set deleted_at = null`,
     [group.id, user.id],
   );
   redirect(`/grupos/${group.id}`);
@@ -65,7 +107,8 @@ export async function joinGroupFromInvite(code: string) {
   await sql(
     `insert into group_members (group_id, user_id, role)
      values ($1, $2, 'member')
-     on conflict do nothing`,
+     on conflict (group_id, user_id) do update
+       set deleted_at = null`,
     [group.id, user.id],
   );
   redirect(`/grupos/${group.id}`);
@@ -100,14 +143,17 @@ export async function createMatch(formData: FormData) {
 
   // Invite all current members as pending attendance.
   const members = await sql<{ user_id: string }>(
-    `select user_id from group_members where group_id = $1`,
+    `select user_id from group_members
+     where group_id = $1 and deleted_at is null`,
     [groupId],
   );
   for (const m of members) {
     await sql(
       `insert into match_players (match_id, user_id, attendance)
        values ($1, $2, 'pending')
-       on conflict do nothing`,
+       on conflict (match_id, user_id) do update
+         set deleted_at = null,
+             attendance = 'pending'`,
       [id, m.user_id],
     );
   }
@@ -169,7 +215,9 @@ export async function setAttendance(formData: FormData) {
   await sql(
     `insert into match_players (match_id, user_id, attendance)
      values ($1, $2, $3)
-     on conflict (match_id, user_id) do update set attendance = excluded.attendance,
+     on conflict (match_id, user_id) do update set
+       deleted_at = null,
+       attendance = excluded.attendance,
        team = case when excluded.attendance = 'confirmed' then match_players.team else null end`,
     [matchId, user.id, attendance],
   );
@@ -348,14 +396,17 @@ export async function addGuestToGroup(formData: FormData) {
 
   // Include guest in open scheduled matches of this group.
   const open = await sql<{ id: string }>(
-    `select id from matches where group_id = $1 and status = 'programado'`,
+    `select id from matches
+     where group_id = $1 and status = 'programado' and deleted_at is null`,
     [groupId],
   );
   for (const m of open) {
     await sql(
       `insert into match_players (match_id, user_id, attendance)
        values ($1, $2, 'pending')
-       on conflict do nothing`,
+       on conflict (match_id, user_id) do update
+         set deleted_at = null,
+             attendance = 'pending'`,
       [m.id, id],
     );
   }
@@ -379,17 +430,21 @@ export async function removeGuestFromGroup(formData: FormData) {
   }
 
   await sql(
-    `delete from group_members where group_id = $1 and user_id = $2`,
+    `update group_members set deleted_at = now()
+     where group_id = $1 and user_id = $2 and deleted_at is null`,
     [groupId, guestId],
   );
-  // Drop from open matches of this group; keep history on played matches.
+  // Soft-remove from open matches; keep history on played matches.
   await sql(
-    `delete from match_players mp
-     using matches m
+    `update match_players mp
+     set deleted_at = now()
+     from matches m
      where mp.match_id = m.id
        and m.group_id = $1
        and m.status = 'programado'
-       and mp.user_id = $2`,
+       and m.deleted_at is null
+       and mp.user_id = $2
+       and mp.deleted_at is null`,
     [groupId, guestId],
   );
 
@@ -526,7 +581,9 @@ export async function setProxyAttendance(formData: FormData) {
   await sql(
     `insert into match_players (match_id, user_id, attendance)
      values ($1, $2, $3)
-     on conflict (match_id, user_id) do update set attendance = excluded.attendance,
+     on conflict (match_id, user_id) do update set
+       deleted_at = null,
+       attendance = excluded.attendance,
        team = case when excluded.attendance = 'confirmed' then match_players.team else null end`,
     [matchId, guestId, attendance],
   );

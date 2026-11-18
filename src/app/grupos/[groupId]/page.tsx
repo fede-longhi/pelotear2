@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CopyInviteLink } from "@/components/CopyInviteLink";
+import { DeleteGroupButton } from "@/components/DeleteGroupButton";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -54,6 +55,7 @@ export default async function GroupPage({
   const inviteUrl = await absoluteInviteUrl(group.invite_code);
   const guests = members.filter((m) => m.is_guest);
   const realMembers = members.filter((m) => !m.is_guest);
+  const isAdmin = membership.role === "admin";
 
   return (
     <>
@@ -284,6 +286,16 @@ export default async function GroupPage({
             </div>
           )}
         </section>
+
+        {isAdmin ? (
+          <section className="section">
+            <h2>Zona de peligro</h2>
+            <p className="lead">
+              Eliminar el grupo borra partidos y stats. Solo admins.
+            </p>
+            <DeleteGroupButton groupId={groupId} groupName={group.name} />
+          </section>
+        ) : null}
       </main>
     </>
   );
