@@ -41,6 +41,28 @@ export async function createGroup(formData: FormData) {
   redirect(`/grupos/${id}`);
 }
 
+export async function updateGroup(formData: FormData) {
+  const user = await requireVerifiedUser();
+  const groupId = String(formData.get("group_id") || "").trim();
+  const name = String(formData.get("name") || "").trim().slice(0, 80);
+  if (!groupId) throw new Error("Grupo inválido.");
+  if (!name) throw new Error("El nombre del grupo es obligatorio.");
+
+  const membership = await getMembership(groupId, user.id);
+  if (membership?.role !== "admin") {
+    throw new Error("Solo un admin puede editar el grupo.");
+  }
+  const group = await getGroup(groupId);
+  if (!group) throw new Error("Grupo no encontrado.");
+
+  await sql(
+    `update groups set name = $1
+     where id = $2 and deleted_at is null`,
+    [name, groupId],
+  );
+  revalidateGroup(groupId);
+}
+
 export async function deleteGroup(formData: FormData) {
   const user = await requireVerifiedUser();
   const groupId = String(formData.get("group_id") || "").trim();
