@@ -1,24 +1,20 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Ban } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
+import { CancelMatchButton } from "@/components/CancelMatchButton";
+import { RescheduleMatchPanel } from "@/components/RescheduleMatchPanel";
+import { TeamNameEditor } from "@/components/TeamNameEditor";
 import { Button } from "@/components/ui/button";
-import { DatePicker } from "@/components/ui/date-picker";
-import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { TimePicker } from "@/components/ui/time-picker";
 import {
   assignTeam,
   autoGenerateTeams,
-  cancelMatch,
   clearTeams,
   revealMotm,
   saveResult,
   setAttendance,
   setProxyAttendance,
-  updateMatchSchedule,
-  updateTeamNames,
   voteMotm,
 } from "@/lib/actions";
 import { requireVerifiedUser } from "@/lib/auth";
@@ -82,62 +78,29 @@ export default async function MatchPage({
             {match.played_on} · {match.kickoff_time}
           </h2>
           <p className="lead">{match.location}</p>
-          <span
-            className={
-              match.status === "jugado"
-                ? "pill pill-ok"
-                : match.status === "cancelado"
-                  ? "pill pill-bad"
-                  : "pill pill-warn"
-            }
-          >
-            {match.status}
-          </span>
+          <div className="match-header-actions">
+            <span
+              className={
+                match.status === "jugado"
+                  ? "pill pill-ok"
+                  : match.status === "cancelado"
+                    ? "pill pill-bad"
+                    : "pill pill-warn"
+              }
+            >
+              {match.status}
+            </span>
+            {scheduled ? (
+              <RescheduleMatchPanel
+                groupId={groupId}
+                matchId={matchId}
+                playedOn={match.played_on}
+                kickoffTime={match.kickoff_time}
+                location={match.location}
+              />
+            ) : null}
+          </div>
         </section>
-
-        {scheduled && (
-          <section className="section">
-            <h2>Reprogramar</h2>
-            <p className="lead">Cambiá fecha, hora o ubicación del partido.</p>
-            <form action={updateMatchSchedule} className="panel form-grid">
-              <input type="hidden" name="group_id" value={groupId} />
-              <input type="hidden" name="match_id" value={matchId} />
-              <Field>
-                <Label htmlFor="played_on">Fecha</Label>
-                <DatePicker
-                  id="played_on"
-                  name="played_on"
-                  required
-                  defaultValue={match.played_on}
-                />
-              </Field>
-              <Field>
-                <Label htmlFor="kickoff_time">Hora</Label>
-                <TimePicker
-                  id="kickoff_time"
-                  name="kickoff_time"
-                  required
-                  defaultValue={match.kickoff_time}
-                />
-              </Field>
-              <Field>
-                <Label htmlFor="location">Ubicación</Label>
-                <Input
-                  id="location"
-                  name="location"
-                  required
-                  maxLength={120}
-                  defaultValue={match.location}
-                />
-              </Field>
-              <div className="form-actions">
-                <Button type="submit" variant="secondary">
-                  Guardar cambios
-                </Button>
-              </div>
-            </form>
-          </section>
-        )}
 
         {played && (
           <section className="section panel">
@@ -380,43 +343,6 @@ export default async function MatchPage({
           </p>
 
           {scheduled && (
-            <form
-              action={updateTeamNames}
-              className="panel team-name-form form-grid"
-            >
-              <input type="hidden" name="group_id" value={groupId} />
-              <input type="hidden" name="match_id" value={matchId} />
-              <div className="two-col">
-                <Field>
-                  <Label htmlFor="team_a_name">Nombre equipo A</Label>
-                  <Input
-                    id="team_a_name"
-                    name="team_a_name"
-                    defaultValue={teamAName}
-                    maxLength={40}
-                    required
-                  />
-                </Field>
-                <Field>
-                  <Label htmlFor="team_b_name">Nombre equipo B</Label>
-                  <Input
-                    id="team_b_name"
-                    name="team_b_name"
-                    defaultValue={teamBName}
-                    maxLength={40}
-                    required
-                  />
-                </Field>
-              </div>
-              <div className="form-actions">
-                <Button type="submit" variant="secondary" size="sm">
-                  Guardar nombres
-                </Button>
-              </div>
-            </form>
-          )}
-
-          {scheduled && (
             <div className="form-actions" style={{ marginBottom: "1rem" }}>
               <form action={autoGenerateTeams}>
                 <input type="hidden" name="group_id" value={groupId} />
@@ -447,6 +373,8 @@ export default async function MatchPage({
           <div className="team-board">
             <TeamPanel
               title={teamAName}
+              otherTitle={teamBName}
+              side="A"
               players={teamA}
               scheduled={scheduled}
               groupId={groupId}
@@ -454,6 +382,8 @@ export default async function MatchPage({
             />
             <TeamPanel
               title={teamBName}
+              otherTitle={teamAName}
+              side="B"
               players={teamB}
               scheduled={scheduled}
               groupId={groupId}
@@ -540,14 +470,7 @@ export default async function MatchPage({
               </div>
             </form>
             {isAdmin && (
-              <form action={cancelMatch} style={{ marginTop: "0.75rem" }}>
-                <input type="hidden" name="group_id" value={groupId} />
-                <input type="hidden" name="match_id" value={matchId} />
-                <button type="submit" className="btn btn-danger">
-                  <Ban size={16} aria-hidden="true" />
-                  Cancelar partido
-                </button>
-              </form>
+              <CancelMatchButton groupId={groupId} matchId={matchId} />
             )}
           </section>
         )}
@@ -625,12 +548,16 @@ function ProxyAttendanceButton({
 
 function TeamPanel({
   title,
+  otherTitle,
+  side,
   players,
   scheduled,
   groupId,
   matchId,
 }: {
   title: string;
+  otherTitle: string;
+  side: "A" | "B";
   players: {
     user_id: string;
     name: string;
@@ -645,7 +572,14 @@ function TeamPanel({
 }) {
   return (
     <div className="panel team-col">
-      <h3>{title}</h3>
+      <TeamNameEditor
+        groupId={groupId}
+        matchId={matchId}
+        side={side}
+        name={title}
+        otherName={otherTitle}
+        editable={scheduled}
+      />
       {players.length === 0 ? (
         <p className="empty">Vacío</p>
       ) : (
