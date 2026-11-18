@@ -168,3 +168,24 @@ export async function countMotmVotes(matchId: string): Promise<number> {
   );
   return Number(rows[0]?.n ?? 0);
 }
+
+export async function countMatchAttendance(matchId: string): Promise<{
+  confirmed: number;
+  pending: number;
+  declined: number;
+}> {
+  const rows = await sql<{ attendance: string; n: number }>(
+    `select attendance, count(*)::int as n
+     from match_players
+     where match_id = $1 and deleted_at is null
+     group by attendance`,
+    [matchId],
+  );
+  const counts = { confirmed: 0, pending: 0, declined: 0 };
+  for (const row of rows) {
+    if (row.attendance === "confirmed") counts.confirmed = Number(row.n);
+    else if (row.attendance === "pending") counts.pending = Number(row.n);
+    else if (row.attendance === "declined") counts.declined = Number(row.n);
+  }
+  return counts;
+}

@@ -803,6 +803,140 @@ textarea {
   white-space: nowrap;
 }
 
+.mock-banner {
+  margin: 0 0 1rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px dashed rgba(226, 179, 74, 0.45);
+  border-radius: 0.55rem;
+  color: var(--gold);
+  font-size: 0.85rem;
+}
+
+.mock-group-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.mock-group-heading {
+  min-width: 0;
+  flex: 1;
+}
+
+.mock-group-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.mock-group-title {
+  margin: 0.15rem 0 0;
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--chalk);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mock-invite {
+  margin-top: -0.35rem;
+}
+
+.mock-next-match {
+  border-color: rgba(226, 179, 74, 0.35);
+  background:
+    linear-gradient(135deg, rgba(226, 179, 74, 0.1), transparent 45%),
+    var(--panel);
+}
+
+.mock-next-match-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+
+.mock-next-when {
+  margin: 0;
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(1.45rem, 3.5vw, 1.9rem);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.mock-next-where {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.45rem 0 0;
+  color: var(--muted);
+}
+
+.mock-create-trigger {
+  width: 100%;
+}
+
+.mock-section-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 0 0.65rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.mock-section-toggle h2 {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+.mock-history-row {
+  cursor: default;
+}
+
+.mock-input {
+  width: 100%;
+  height: 2.5rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--chalk);
+  padding: 0 0.75rem;
+}
+
+.mock-linkish {
+  border: 0;
+  background: transparent;
+  color: var(--gold);
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.mock-danger {
+  opacity: 0.85;
+  border-top: 1px solid var(--line);
+  padding-top: 1.25rem;
+}
+
 .match-header-actions {
   display: flex;
   flex-wrap: wrap;
