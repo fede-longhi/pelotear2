@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
 import { CancelMatchButton } from "@/components/CancelMatchButton";
 import { RescheduleMatchPanel } from "@/components/RescheduleMatchPanel";
+import { ShareTeamsButton } from "@/components/ShareTeamsButton";
 import { TeamNameEditor } from "@/components/TeamNameEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ import {
   listMotmTally,
 } from "@/lib/queries";
 import { playerLabel } from "@/lib/display";
+import { buildTeamsShareMessage } from "@/lib/teams-message";
 import type { TeamSide } from "@/lib/types";
 
 export default async function MatchPage({
@@ -369,6 +371,23 @@ export default async function MatchPage({
               </form>
             </div>
           )}
+
+          {teamA.length + teamB.length > 0 ? (
+            <div style={{ marginBottom: "1rem" }}>
+              <ShareTeamsButton
+                message={buildTeamsShareMessage({
+                  playedOn: match.played_on,
+                  kickoffTime: match.kickoff_time,
+                  location: match.location,
+                  teamAName,
+                  teamBName,
+                  teamA,
+                  teamB,
+                  unassigned,
+                })}
+              />
+            </div>
+          ) : null}
 
           <div className="team-board">
             <TeamPanel
