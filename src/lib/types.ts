@@ -90,3 +90,33 @@ export type MotmTallyRow = {
   is_guest: boolean;
   votes: number;
 };
+
+/** Chemistry vs another player (teammate or opponent). */
+export type ChemistryRow = {
+  user_id: string;
+  name: string;
+  is_guest: boolean;
+  played: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  /** wins / played, 0–1 */
+  win_rate: number;
+};
+
+export type PersonalGroupStats = {
+  user_id: string;
+  name: string;
+  played: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  win_rate: number;
+  streak: number;
+  form: string;
+  motm: number;
+  best_teammates: ChemistryRow[];
+  worst_teammates: ChemistryRow[];
+  toughest_rivals: ChemistryRow[];
+  favorite_rivals: ChemistryRow[];
+};

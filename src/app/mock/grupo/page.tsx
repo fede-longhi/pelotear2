@@ -266,6 +266,11 @@ export default function GroupPageMock() {
             <h2>Ranking</h2>
             <span className="meta">Top 5</span>
           </div>
+          <p className="meta" style={{ margin: "0 0 0.65rem" }}>
+            <Link href="/mock/yo" className="mock-linkish">
+              Mis estadísticas →
+            </Link>
+          </p>
           <div className="panel" style={{ overflowX: "auto" }}>
             <table className="stats-table">
               <thead>

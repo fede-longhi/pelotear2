@@ -326,6 +326,11 @@ export function GroupDashboard({
           <h2>Ranking</h2>
           <span className="meta">{statsOpen ? "Completo" : "Top 5"}</span>
         </div>
+        <p className="meta" style={{ margin: "0 0 0.65rem" }}>
+          <Link href={`/grupos/${groupId}/yo`} className="mock-linkish">
+            Mis estadísticas →
+          </Link>
+        </p>
         {stats.length === 0 ? (
           <p className="empty">Todavía no hay partidos jugados.</p>
         ) : (
