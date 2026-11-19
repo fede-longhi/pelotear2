@@ -395,6 +395,19 @@ textarea {
   margin-top: 0.25rem;
 }
 
+.share-teams-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.share-teams-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .auth-divider {
   display: flex;
   align-items: center;
