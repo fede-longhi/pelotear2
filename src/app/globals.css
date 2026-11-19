@@ -565,6 +565,38 @@ textarea {
   letter-spacing: 0.04em;
 }
 
+.personal-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem 0.5rem;
+  padding: 0.95rem 0.85rem;
+}
+
+.personal-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  align-items: flex-start;
+}
+
+.personal-stat-value {
+  font-family: var(--font-display), sans-serif;
+  font-size: 1.35rem;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.personal-stat-form .form-pills {
+  min-height: 1.35rem;
+  align-items: center;
+}
+
+@media (min-width: 640px) {
+  .personal-summary {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
 .empty {
   color: var(--muted);
   font-style: italic;
